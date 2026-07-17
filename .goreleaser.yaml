@@ -76,12 +76,24 @@ homebrew_casks:
 
     directory: Casks
 
-    description: Interactive CLI for browsing and decoding Kubernetes Secrets
+    description: Simple interactive kubectl plugin for browsing Secrets and discovering where they are used
     homepage: https://github.com/pierinho13/kubectl-peek
     license: MIT
 
     binaries:
       - kubectl-peek
+
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr",
+              args: [
+                "-dr",
+                "com.apple.quarantine",
+                "#{staged_path}/kubectl-peek"
+              ]
+          end
 
     commit_author:
       name: pierinho13
