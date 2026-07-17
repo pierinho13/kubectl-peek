@@ -1,7 +1,16 @@
 package main
 
-import "github.com/pierinho13/kubectl-peek/cmd"
+import (
+	"fmt"
+	"os"
+
+	"github.com/pierinho13/kubectl-peek/cmd"
+)
 
 func main() {
-	cmd.Execute()
+
+	if err := cmd.Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 }
