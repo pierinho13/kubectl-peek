@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pierinho13/kubectl-peek/internal/kubernetes"
 	"github.com/pierinho13/kubectl-peek/internal/ui"
 
 	"github.com/spf13/cobra"
@@ -152,8 +153,17 @@ func runPeek(
 		return ui.RenderEmptySecretError(secret.Name)
 	}
 
-	fmt.Fprintln(out)
-	fmt.Fprintln(out, ui.RenderSecret(secret))
+	usages, err := kubernetes.FindSecretUsages(
+		ctx,
+		client.Clientset,
+		client.Namespace,
+		secret.Name,
+	)
+	if err != nil {
+		return fmt.Errorf("find secret usages: %w", err)
+	}
 
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, ui.RenderSecret(secret, usages))
 	return nil
 }
