@@ -1,29 +1,238 @@
 # kubectl-peek
 
-`kubectl-peek` is a small interactive CLI for browsing Kubernetes Secrets and displaying their decoded values directly from the terminal.
+`kubectl-peek` is an interactive CLI for browsing Kubernetes Secrets and displaying their decoded values directly in the terminal.
 
-It uses the active Kubernetes context and namespace by default, while also supporting explicit namespace, context, and kubeconfig selection.
-
-> Warning: selected Secret values are printed in plain text. Avoid using the tool while screen sharing or in terminals whose output is being recorded.
+It uses the active Kubernetes context and namespace by default, while also supporting explicit context, namespace, and kubeconfig selection.
 
 ## Features
 
-- Lists Secrets from the selected Kubernetes namespace.
-- Interactive keyboard-based Secret selection.
-- Pagination for large Secret lists.
+- Interactive Secret selection.
+- Keyboard navigation and pagination.
 - Interactive filtering by Secret name.
-- Optional initial name filter from the command line.
-- Supports custom namespaces, Kubernetes contexts, and kubeconfig files.
-- Displays the selected Secret name, namespace, type, keys, and decoded values.
-- Responsive filtered results that remain usable on smaller terminal windows.
+- Optional name filtering from the command line.
+- Namespace, context, and kubeconfig overrides.
+- Decoded Secret values displayed in a readable format.
+- Support for macOS, Linux, and Windows release binaries.
+- Native `kubectl` plugin usage.
 
-## Requirements
+## Installation
 
-- Access to a Kubernetes cluster.
-- A valid kubeconfig.
-- Permission to list and read Secrets in the target namespace.
+### Homebrew
 
-The Kubernetes permissions required are equivalent to:
+Add the tap and install `kubectl-peek`:
+
+```bash
+brew tap pierinho13/tools
+brew install --cask kubectl-peek
+```
+
+You can also install it with the fully qualified tap name:
+
+```bash
+brew install --cask pierinho13/tools/kubectl-peek
+```
+
+Upgrade to the latest available version with:
+
+```bash
+brew update
+brew upgrade --cask kubectl-peek
+```
+
+### GitHub Releases
+
+Precompiled binaries for macOS, Linux, and Windows are published on the GitHub Releases page.
+
+Download the archive for your operating system and architecture, extract it, and place the `kubectl-peek` binary in a directory included in your `PATH`.
+
+Example for macOS or Linux:
+
+```bash
+tar -xzf kubectl-peek_<version>_<os>_<arch>.tar.gz
+chmod +x kubectl-peek
+sudo mv kubectl-peek /usr/local/bin/
+```
+
+Verify the installation:
+
+```bash
+kubectl-peek --help
+```
+
+### Build from source
+
+Requirements:
+
+- Go installed.
+- Access to a Kubernetes cluster through a valid kubeconfig.
+
+```bash
+git clone https://github.com/pierinho13/kubectl-peek.git
+cd kubectl-peek
+go build -o kubectl-peek .
+```
+
+Move the binary into your `PATH`:
+
+```bash
+sudo mv kubectl-peek /usr/local/bin/
+```
+
+## Usage
+
+Once installed, the tool can be executed in either of these forms:
+
+```bash
+kubectl-peek
+```
+
+or as a native `kubectl` plugin:
+
+```bash
+kubectl peek
+```
+
+Both commands run the same binary and provide the same functionality.
+
+### Browse Secrets in the current namespace
+
+```bash
+kubectl-peek
+```
+
+Equivalent command:
+
+```bash
+kubectl peek
+```
+
+Example interactive view:
+
+```text
+Select a Secret from namespace "default"
+Use ↑/↓ to move, ←/→ to change page, and / to filter.
+
+  atlas-db-credentials
+  comet-api-token
+> nebula-service-config
+  orchard-cache-password
+  quartz-worker-auth
+
+Page 1/3 · 24 Secrets
+```
+
+Press `Enter` to select the highlighted Secret.
+
+### Filter by name from the command line
+
+Pass a pattern as the first argument:
+
+```bash
+kubectl-peek database
+```
+
+Equivalent command:
+
+```bash
+kubectl peek database
+```
+
+Only Secrets whose names contain the supplied pattern are shown. Matching is case-insensitive.
+
+Example:
+
+```text
+Select a Secret from namespace "default"
+Use ↑/↓ to move, ←/→ to change page, and / to filter.
+
+> atlas-database-password
+  nebula-database-credentials
+  quartz-database-token
+
+Page 1/1 · 3 Secrets
+```
+
+### Use another namespace
+
+```bash
+kubectl-peek -n staging
+```
+
+or:
+
+```bash
+kubectl peek -n staging
+```
+
+You can combine the namespace with a name pattern:
+
+```bash
+kubectl-peek database -n staging
+```
+
+### Use another Kubernetes context
+
+```bash
+kubectl-peek --context development-cluster
+```
+
+### Use a specific kubeconfig
+
+```bash
+kubectl-peek --kubeconfig ~/.kube/secondary-config
+```
+
+Options can be combined:
+
+```bash
+kubectl-peek database \
+  --context development-cluster \
+  --namespace staging \
+  --kubeconfig ~/.kube/secondary-config
+```
+
+## Interactive controls
+
+```text
+↑ / ↓     Move through Secrets
+← / →     Change page when no interactive filter is active
+/         Start filtering the visible Secret list
+Enter     Select the highlighted Secret
+Esc       Leave filtering mode or cancel
+Ctrl+C    Cancel
+```
+
+When the interactive filter is active, type any substring of the Secret name. The result list updates immediately.
+
+## Example output
+
+After selecting a Secret, `kubectl-peek` displays its metadata and decoded values:
+
+```text
+Secret: nebula-service-config
+Namespace: default
+Type: Opaque
+
+environment:
+────────────────────────────────────────────────────────────
+production
+
+password:
+────────────────────────────────────────────────────────────
+example-password
+
+username:
+────────────────────────────────────────────────────────────
+nebula-service
+```
+
+Kubernetes Secret values are returned by `client-go` as decoded byte values, so the application displays the decoded content directly.
+
+## Permissions
+
+The current Kubernetes identity must be allowed to list and read Secrets in the selected namespace.
+
+At minimum, it needs permissions equivalent to:
 
 ```yaml
 apiGroups:
@@ -35,202 +244,20 @@ verbs:
   - list
 ```
 
-## Installation
-
-Build the binary from the repository:
+You can verify access with:
 
 ```bash
-go build -o kubectl-peek .
+kubectl auth can-i list secrets -n default
+kubectl auth can-i get secrets -n default
 ```
 
-Move it to a directory available in your `PATH`:
+## Security notice
 
-```bash
-mv kubectl-peek /usr/local/bin/kubectl-peek
-```
+`kubectl-peek` prints decoded Secret values directly to the terminal. Those values may remain visible in terminal scrollback, screen recordings, shared sessions, or captured command output.
 
-Alternatively, install it for the current user:
-
-```bash
-mkdir -p "$HOME/.local/bin"
-mv kubectl-peek "$HOME/.local/bin/kubectl-peek"
-```
-
-Make sure the directory is included in your `PATH`:
-
-```bash
-export PATH="$HOME/.local/bin:$PATH"
-```
-
-## Usage
-
-Open the interactive Secret selector using the current Kubernetes context and namespace:
-
-```bash
-kubectl-peek
-```
-
-Use a specific namespace:
-
-```bash
-kubectl-peek --namespace monitoring
-```
-
-The namespace flag also supports its short form:
-
-```bash
-kubectl-peek -n monitoring
-```
-
-Use a specific Kubernetes context:
-
-```bash
-kubectl-peek --context staging
-```
-
-Use a custom kubeconfig file:
-
-```bash
-kubectl-peek --kubeconfig ~/.kube/staging-config
-```
-
-Combine the options:
-
-```bash
-kubectl-peek \
-  --context staging \
-  --namespace monitoring \
-  --kubeconfig ~/.kube/config
-```
-
-## Filter Secrets from the command line
-
-Pass a partial Secret name as the first argument:
-
-```bash
-kubectl-peek db
-```
-
-The match is case-insensitive and checks whether the Secret name contains the provided pattern.
-
-For example, the previous command may show:
-
-```text
-Select a Secret from namespace "default"
-Use ↑/↓ to move, ←/→ to change page, and / to filter.
-
-> comet-db-credentials
-  nebula-db-users
-  driftwood-db
-  harbor-db-admin
-  orchard-db-credentials
-
-Page 1/2 · 8 Secrets
-```
-
-You can combine the pattern with other options:
-
-```bash
-kubectl-peek db -n production
-```
-
-## Interactive controls
-
-```text
-↑ / ↓       Move through Secrets
-← / →       Change page when no interactive filter is active
-/           Start filtering the visible Secret list
-Backspace   Remove characters from the filter
-Enter       Select the highlighted Secret
-Esc         Exit filtering or cancel the selector
-Ctrl+C      Cancel the selector
-```
-
-When an interactive filter is active, matching results are displayed in a scrollable window rather than split into pages.
-
-Example:
-
-```text
-Select a Secret from namespace "production"
-/secret
-Use ↑/↓ to move, ←/→ to change page, and / to filter.
-
-  lantern-secret
-  orchard-secret
-> falcon-secret
-  meadow-secret
-  rocket-secret
-
-18 matching Secrets · 3/18 selected
-```
-
-## Output
-
-After selecting a Secret, `kubectl-peek` prints its metadata and all values contained in `data`.
-
-Example output:
-
-```text
-Secret: harbor-db-admin
-Namespace: production
-Type: Opaque
-
-password:
-demo-password-123
-
-username:
-admin-user
-```
-
-Kubernetes represents Secret values as Base64 in YAML and JSON responses. The Kubernetes Go client exposes the `data` values as decoded byte arrays, so `kubectl-peek` prints their decoded contents directly.
-
-## Examples
-
-Browse Secrets in the current namespace:
-
-```bash
-kubectl-peek
-```
-
-Browse Secrets in `monitoring`:
-
-```bash
-kubectl-peek -n monitoring
-```
-
-Show only Secrets whose names contain `certificate`:
-
-```bash
-kubectl-peek certificate -n monitoring
-```
-
-Use the `cluster-eu` context:
-
-```bash
-kubectl-peek --context cluster-eu
-```
-
-Use another kubeconfig and namespace:
-
-```bash
-kubectl-peek token \
-  --kubeconfig ~/.kube/cluster-config \
-  --namespace sandbox
-```
+Use the tool only in trusted environments and avoid exposing sensitive values unnecessarily.
 
 ## Development
-
-Run the application locally:
-
-```bash
-go run .
-```
-
-Format the code:
-
-```bash
-gofmt -w .
-```
 
 Run the tests:
 
@@ -238,23 +265,17 @@ Run the tests:
 go test ./...
 ```
 
-Run the UI tests with verbose output:
-
-```bash
-go test -v ./internal/ui
-```
-
-Build the binary:
+Build the project:
 
 ```bash
 go build -o kubectl-peek .
 ```
 
-## Current scope
+Run it locally:
 
-The current version focuses only on Kubernetes Secrets. It can list, filter, select, and display decoded Secret values.
-
-It does not currently modify Secrets, edit values, copy individual keys to the clipboard, inspect Secret usage, or integrate with external secret providers.
+```bash
+./kubectl-peek
+```
 
 ## License
 
