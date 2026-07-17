@@ -16,6 +16,10 @@ The tool is intentionally designed to be simple:
 
 It works with your existing kubeconfig, active Kubernetes context, and current namespace.
 
+<img width="1200" height="700" alt="kubectl-peek-demo" src="https://github.com/user-attachments/assets/10a12751-2e9f-4231-b048-7ad610d9f4ff" />
+
+
+
 ## Features
 
 - Interactive Secret selection.
