@@ -1,0 +1,49 @@
+name: Feature request
+description: Suggest an improvement for kubectl-peek
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        `kubectl-peek` is intentionally designed to remain small, simple, and easy to use.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What problem are you trying to solve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the behavior you would like.
+    validations:
+      required: true
+
+  - type: textarea
+    id: example
+    attributes:
+      label: Example usage or output
+      description: Show an example when useful.
+      render: shell
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Describe any alternatives or workarounds.
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - label: This feature keeps the tool simple and focused.
+          required: true
+        - label: This request does not require exposing sensitive data.
+          required: true

@@ -1,0 +1,94 @@
+name: Bug report
+description: Report a reproducible problem with kubectl-peek
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug.
+
+        Do not include Secret values, tokens, credentials, kubeconfig contents, or other sensitive information.
+
+  - type: input
+    id: version
+    attributes:
+      label: kubectl-peek version
+      description: Output of `kubectl-peek --version`, when available.
+      placeholder: v0.1.2
+    validations:
+      required: true
+
+  - type: input
+    id: operating-system
+    attributes:
+      label: Operating system
+      placeholder: macOS 15, Ubuntu 24.04, Windows 11
+    validations:
+      required: true
+
+  - type: input
+    id: kubernetes-version
+    attributes:
+      label: Kubernetes version
+      description: Output of `kubectl version`, excluding sensitive cluster information.
+      placeholder: v1.31.0
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Command used
+      placeholder: kubectl peek database -n staging
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Problem description
+      description: Describe what happened.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run ...
+        2. Select ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add relevant sanitized logs or screenshots.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Security checks
+      options:
+        - label: I removed Secret values, tokens, credentials, and kubeconfig data.
+          required: true
