@@ -97,14 +97,18 @@ func runPeek(
 	}
 
 	filteredSecrets := make([]string, 0, len(secrets.Items))
+	normalizedPattern := strings.ToLower(pattern)
 
 	for _, secret := range secrets.Items {
 		if pattern == "" ||
 			strings.Contains(
 				strings.ToLower(secret.Name),
-				strings.ToLower(pattern),
+				normalizedPattern,
 			) {
-			filteredSecrets = append(filteredSecrets, secret.Name)
+			filteredSecrets = append(
+				filteredSecrets,
+				secret.Name,
+			)
 		}
 	}
 
@@ -145,30 +149,11 @@ func runPeek(
 	}
 
 	if len(secret.Data) == 0 {
-		return fmt.Errorf(
-			"Secret %q contains no data",
-			secret.Name,
-		)
+		return ui.RenderEmptySecretError(secret.Name)
 	}
 
-	fmt.Fprintf(out, "\nSecret: %s\n", secret.Name)
-	fmt.Fprintf(out, "Namespace: %s\n", secret.Namespace)
-	fmt.Fprintf(out, "Type: %s\n\n", secret.Type)
-
-	keys := make([]string, 0, len(secret.Data))
-
-	for key := range secret.Data {
-		keys = append(keys, key)
-	}
-
-	sort.Strings(keys)
-
-	for _, key := range keys {
-		value := secret.Data[key]
-
-		fmt.Fprintf(out, "%s:\n", key)
-		fmt.Fprintf(out, "%s\n\n", string(value))
-	}
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, ui.RenderSecret(secret))
 
 	return nil
 }
