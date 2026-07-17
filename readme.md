@@ -37,7 +37,7 @@ It works with your existing kubeconfig, active Kubernetes context, and current n
 
 ### Homebrew
 
-Add the tap and install `kubectl-peek`:
+For Linux and Mac OS users:
 
 ```bash
 brew tap pierinho13/tools
