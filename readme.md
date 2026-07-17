@@ -1,19 +1,29 @@
 # kubectl-peek
 
-`kubectl-peek` is an interactive CLI for browsing Kubernetes Secrets and displaying their decoded values directly in the terminal.
+`kubectl-peek` is a small and straightforward CLI for browsing Kubernetes Secrets, seeing where they are used, and displaying their decoded values directly in the terminal.
 
-It uses the active Kubernetes context and namespace by default, while also supporting explicit context, namespace, and kubeconfig selection.
+The tool is intentionally designed to be simple:
+
+- no complex configuration
+- no additional services
+- no custom resources
+- no web interface
+- no cluster-side installation
+
+It works with your existing kubeconfig, active Kubernetes context, and current namespace.
 
 ## Features
 
 - Interactive Secret selection.
-- Keyboard navigation and pagination.
+- Simple keyboard navigation and pagination.
 - Interactive filtering by Secret name.
 - Optional name filtering from the command line.
 - Namespace, context, and kubeconfig overrides.
-- Decoded Secret values displayed in a readable format.
+- Decoded Secret values displayed directly in the terminal.
+- `Used by` discovery for supported Kubernetes workloads.
 - Support for macOS, Linux, and Windows release binaries.
 - Native `kubectl` plugin usage.
+- No cluster-side components required.
 
 ## Installation
 
@@ -92,7 +102,7 @@ or as a native `kubectl` plugin:
 kubectl peek
 ```
 
-Both commands run the same binary and provide the same functionality.
+Both commands run the same binary and provide exactly the same functionality.
 
 ### Browse Secrets in the current namespace
 
@@ -204,14 +214,65 @@ Ctrl+C    Cancel
 
 When the interactive filter is active, type any substring of the Secret name. The result list updates immediately.
 
+## Used by
+
+When a Secret is selected, `kubectl-peek` searches the current namespace for supported workloads that reference it.
+
+The current implementation detects usage in:
+
+- Pods
+- Deployments
+- StatefulSets
+- DaemonSets
+- Jobs
+- CronJobs
+
+It detects references through:
+
+- `env[].valueFrom.secretKeyRef`
+- `envFrom[].secretRef`
+- Secret-backed volumes
+- `imagePullSecrets`
+- Init containers
+- Ephemeral containers
+
+This makes it possible to inspect the Secret and understand its immediate workload dependencies in a single command.
+
+Example:
+
+```text
+Secret: database-credentials
+Namespace: default
+Type: Opaque
+Used by:
+  Deployment/backend
+    container/backend envFrom
+  CronJob/backup
+    container/backup env/BACKUP_PASSWORD -> password
+```
+
+When no supported workload references the Secret:
+
+```text
+Used by:
+  none
+```
+
+The `Used by` result is limited to the supported workload types above. Other Kubernetes resources and custom resources may also reference Secrets.
+
 ## Example output
 
-After selecting a Secret, `kubectl-peek` displays its metadata and decoded values:
+After selecting a Secret, `kubectl-peek` displays its metadata, detected usages, and decoded values:
 
 ```text
 Secret: nebula-service-config
 Namespace: default
 Type: Opaque
+Used by:
+  Deployment/nebula-service
+    container/nebula-service envFrom
+  CronJob/nebula-backup
+    container/backup env/BACKUP_PASSWORD -> password
 
 environment:
 ────────────────────────────────────────────────────────────
@@ -230,9 +291,9 @@ Kubernetes Secret values are returned by `client-go` as decoded byte values, so 
 
 ## Permissions
 
-The current Kubernetes identity must be allowed to list and read Secrets in the selected namespace.
+The current Kubernetes identity must be allowed to read Secrets and list the supported workload resources in the selected namespace.
 
-At minimum, it needs permissions equivalent to:
+For Secret access:
 
 ```yaml
 apiGroups:
@@ -244,16 +305,63 @@ verbs:
   - list
 ```
 
-You can verify access with:
+For `Used by` discovery:
+
+```yaml
+apiGroups:
+  - ""
+resources:
+  - pods
+verbs:
+  - list
+---
+apiGroups:
+  - apps
+resources:
+  - deployments
+  - statefulsets
+  - daemonsets
+verbs:
+  - list
+---
+apiGroups:
+  - batch
+resources:
+  - jobs
+  - cronjobs
+verbs:
+  - list
+```
+
+You can verify Secret access with:
 
 ```bash
 kubectl auth can-i list secrets -n default
 kubectl auth can-i get secrets -n default
 ```
 
+You can verify workload access with:
+
+```bash
+kubectl auth can-i list pods -n default
+kubectl auth can-i list deployments.apps -n default
+kubectl auth can-i list statefulsets.apps -n default
+kubectl auth can-i list daemonsets.apps -n default
+kubectl auth can-i list jobs.batch -n default
+kubectl auth can-i list cronjobs.batch -n default
+```
+
 ## Security notice
 
-`kubectl-peek` prints decoded Secret values directly to the terminal. Those values may remain visible in terminal scrollback, screen recordings, shared sessions, or captured command output.
+`kubectl-peek` prints decoded Secret values directly to the terminal.
+
+Those values may remain visible in:
+
+- terminal scrollback
+- shell session recordings
+- screen sharing sessions
+- screenshots
+- captured command output
 
 Use the tool only in trusted environments and avoid exposing sensitive values unnecessarily.
 
@@ -275,6 +383,12 @@ Run it locally:
 
 ```bash
 ./kubectl-peek
+```
+
+You can also test it through the `kubectl` plugin form by placing the binary in your `PATH`:
+
+```bash
+kubectl peek
 ```
 
 ## License
