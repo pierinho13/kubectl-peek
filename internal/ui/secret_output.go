@@ -22,10 +22,6 @@ var (
 				Foreground(lipgloss.Color("#555555"))
 )
 
-// RenderSecret renders every Secret key using the same simple format.
-//
-// Secret.Data values are already decoded by client-go.
-// Values are rendered completely, without truncation or wrapping.
 func RenderSecret(secret *corev1.Secret) string {
 	var builder strings.Builder
 
