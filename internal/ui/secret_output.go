@@ -7,6 +7,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 	corev1 "k8s.io/api/core/v1"
+
+	kube "github.com/pierinho13/kubectl-peek/internal/kubernetes"
 )
 
 var (
@@ -22,12 +24,16 @@ var (
 				Foreground(lipgloss.Color("#555555"))
 )
 
-func RenderSecret(secret *corev1.Secret) string {
+func RenderSecret(
+	secret *corev1.Secret,
+	usages []kube.SecretUsage,
+) string {
 	var builder strings.Builder
 
 	renderMetadataLine(&builder, "Secret", secret.Name)
 	renderMetadataLine(&builder, "Namespace", secret.Namespace)
 	renderMetadataLine(&builder, "Type", string(secret.Type))
+	renderSecretUsages(&builder, usages)
 
 	keys := make([]string, 0, len(secret.Data))
 
@@ -77,4 +83,32 @@ func RenderEmptySecretError(secretName string) error {
 		"Secret %q contains no data",
 		secretName,
 	)
+}
+
+func renderSecretUsages(
+	builder *strings.Builder,
+	usages []kube.SecretUsage,
+) {
+	builder.WriteString(secretMetadataLabelStyle.Render("Used by:"))
+	builder.WriteString("\n")
+
+	if len(usages) == 0 {
+		builder.WriteString("  none")
+		builder.WriteString("\n")
+		return
+	}
+
+	for _, usage := range usages {
+		builder.WriteString("  ")
+		builder.WriteString(secretKeyStyle.Render(
+			fmt.Sprintf("%s/%s", usage.Kind, usage.Name),
+		))
+		builder.WriteString("\n")
+
+		for _, reference := range usage.References {
+			builder.WriteString("    ")
+			builder.WriteString(reference)
+			builder.WriteString("\n")
+		}
+	}
 }
