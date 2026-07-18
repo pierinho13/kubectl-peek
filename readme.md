@@ -20,7 +20,9 @@ Instead of only answering:
 
 The tool runs entirely on the client side using your existing kubeconfig. It does not install controllers, agents, CRDs, web interfaces, or other components in the cluster.
 
-<img width="1200" height="700" alt="kubectl-peek-demo" src="https://github.com/user-attachments/assets/10a12751-2e9f-4231-b048-7ad610d9f4ff" />
+<img width="1000" height="583" alt="kubectl-peek-demo-small" src="https://github.com/user-attachments/assets/b13f3b4d-da5b-46ed-97bb-ba07d3001e61" />
+
+
 
 ## Features
 
