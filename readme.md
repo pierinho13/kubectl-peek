@@ -805,24 +805,6 @@ Test the `kubectl` plugin form by placing the binary in your `PATH`:
 kubectl peek
 ```
 
-## Contributing rules
-
-Contributions for commonly used operators are welcome.
-
-A useful rule contribution should:
-
-- support currently maintained API versions
-- use the correct plural API resource name
-- point directly to Secret-name fields
-- use an accurate relationship
-- include a clear description
-- avoid speculative or version-specific paths unless documented
-
-Before submitting a rule, verify it against real resource manifests and run:
-
-```bash
-go test ./...
-```
 
 ## Roadmap
 
