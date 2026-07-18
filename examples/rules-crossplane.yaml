@@ -1,0 +1,26 @@
+# Crossplane-style connection Secret rules
+#
+# Crossplane providers and platform compositions can expose connection Secrets
+# through different custom resource kinds and paths.
+#
+# Keep only the rules that match resources installed in your cluster and verify
+# each path against the corresponding CRD schema.
+
+rules:
+  - apiVersions:
+      - database.example.org/v1alpha1
+    kind: PostgreSQLInstance
+    resource: postgresqlinstances
+    references:
+      - path: spec.writeConnectionSecretToRef.name
+        relation: produces
+        description: connection Secret
+
+  - apiVersions:
+      - db.infra.doodle.com/v1alpha1
+    kind: PostgreSQLInstance
+    resource: postgresqlinstances
+    references:
+      - path: spec.writeConnectionSecretToRef.name
+        relation: produces
+        description: connection Secret

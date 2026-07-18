@@ -1,0 +1,14 @@
+# cert-manager rules
+#
+# Certificate resources normally write the issued certificate and private key
+# to spec.secretName.
+
+rules:
+  - apiVersions:
+      - cert-manager.io/v1
+    kind: Certificate
+    resource: certificates
+    references:
+      - path: spec.secretName
+        relation: produces
+        description: issued TLS Secret

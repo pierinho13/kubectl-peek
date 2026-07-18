@@ -1,0 +1,37 @@
+# Generic custom resource examples
+#
+# These examples demonstrate simple paths and wildcard array traversal.
+# Replace the API groups, kinds, resources, and paths with values that match
+# the CRDs installed in your cluster.
+
+rules:
+  - apiVersions:
+      - example.io/v1
+    kind: Application
+    resource: applications
+    references:
+      - path: spec.credentials.secretRef.name
+        relation: uses
+        description: application credentials
+
+      - path: spec.backends.*.tls.secretName
+        relation: uses
+        description: backend TLS Secret
+
+  - apiVersions:
+      - platform.example.io/v1alpha1
+    kind: ManagedDatabase
+    resource: manageddatabases
+    references:
+      - path: spec.writeConnectionSecretToRef.name
+        relation: produces
+        description: connection Secret
+
+  - apiVersions:
+      - platform.example.io/v1alpha1
+    kind: ServiceGroup
+    resource: servicegroups
+    references:
+      - path: spec.services.*.credentials.*.secretRef.name
+        relation: references
+        description: service credential Secret
