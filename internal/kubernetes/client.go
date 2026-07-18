@@ -3,13 +3,19 @@ package kubernetes
 import (
 	"fmt"
 
+	"github.com/pierinho13/kubectl-peek/internal/config"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 type Client struct {
-	Clientset kubernetes.Interface
-	Namespace string
+	Clientset  kubernetes.Interface
+	Discovery  discovery.DiscoveryInterface
+	Dynamic    dynamic.Interface
+	Namespace  string
+	UsageRules []config.UsageRule
 }
 
 func NewClient(
@@ -40,21 +46,48 @@ func NewClient(
 
 	restConfig, err := clientConfig.ClientConfig()
 	if err != nil {
-		return nil, fmt.Errorf("load Kubernetes configuration: %w", err)
+		return nil, fmt.Errorf(
+			"load Kubernetes configuration: %w",
+			err,
+		)
 	}
 
 	resolvedNamespace, _, err := clientConfig.Namespace()
 	if err != nil {
-		return nil, fmt.Errorf("resolve Kubernetes namespace: %w", err)
+		return nil, fmt.Errorf(
+			"resolve Kubernetes namespace: %w",
+			err,
+		)
 	}
 
 	clientset, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
-		return nil, fmt.Errorf("create Kubernetes client: %w", err)
+		return nil, fmt.Errorf(
+			"create Kubernetes client: %w",
+			err,
+		)
+	}
+
+	discoveryClient, err := discovery.NewDiscoveryClientForConfig(restConfig)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"create Kubernetes discovery client: %w",
+			err,
+		)
+	}
+
+	dynamicClient, err := dynamic.NewForConfig(restConfig)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"create Kubernetes dynamic client: %w",
+			err,
+		)
 	}
 
 	return &Client{
 		Clientset: clientset,
+		Discovery: discoveryClient,
+		Dynamic:   dynamicClient,
 		Namespace: resolvedNamespace,
 	}, nil
 }

@@ -1,0 +1,29 @@
+rules:
+  - apiVersions:
+      - external-secrets.io/v1
+      - external-secrets.io/v1beta1
+    kind: ExternalSecret
+    resource: externalsecrets
+    references:
+      - path: spec.target.name
+        description: generated Secret
+        relation: produces
+
+  - apiVersions:
+      - cert-manager.io/v1
+    kind: Certificate
+    resource: certificates
+    references:
+      - path: spec.secretName
+        description: generated TLS Secret
+        relation: produces
+
+  - apiVersions:
+      - platform.example.com/v1
+      - platform.example.com/v1beta1
+    kind: Application
+    resource: applications
+    references:
+      - path: spec.credentials[*].secretRef.name
+        description: application credentials
+        relation: uses

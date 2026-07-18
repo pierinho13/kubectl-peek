@@ -22,18 +22,23 @@ var (
 
 	secretSeparatorStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("#555555"))
+
+	secretWarningStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#D7A700"))
 )
 
 func RenderSecret(
 	secret *corev1.Secret,
-	usages []kube.SecretUsage,
+	result kube.SecretUsageResult,
 ) string {
 	var builder strings.Builder
 
 	renderMetadataLine(&builder, "Secret", secret.Name)
 	renderMetadataLine(&builder, "Namespace", secret.Namespace)
 	renderMetadataLine(&builder, "Type", string(secret.Type))
-	renderSecretUsages(&builder, usages)
+
+	renderSecretUsages(&builder, result.Usages)
+	renderSecretWarnings(&builder, result.Warnings)
 
 	keys := make([]string, 0, len(secret.Data))
 
@@ -89,26 +94,99 @@ func renderSecretUsages(
 	builder *strings.Builder,
 	usages []kube.SecretUsage,
 ) {
-	builder.WriteString(secretMetadataLabelStyle.Render("Used by:"))
+	builder.WriteString(
+		secretMetadataLabelStyle.Render("Used by:"),
+	)
 	builder.WriteString("\n")
 
 	if len(usages) == 0 {
 		builder.WriteString("  none")
 		builder.WriteString("\n")
+
 		return
 	}
 
 	for _, usage := range usages {
 		builder.WriteString("  ")
-		builder.WriteString(secretKeyStyle.Render(
-			fmt.Sprintf("%s/%s", usage.Kind, usage.Name),
-		))
+		builder.WriteString(
+			secretKeyStyle.Render(
+				fmt.Sprintf(
+					"%s/%s",
+					usage.Kind,
+					usage.Name,
+				),
+			),
+		)
 		builder.WriteString("\n")
 
 		for _, reference := range usage.References {
 			builder.WriteString("    ")
-			builder.WriteString(reference)
+			builder.WriteString(renderSecretUsageReference(reference))
 			builder.WriteString("\n")
 		}
 	}
+}
+
+func renderSecretWarnings(
+	builder *strings.Builder,
+	warnings []kube.SecretUsageWarning,
+) {
+	if len(warnings) == 0 {
+		return
+	}
+
+	builder.WriteString(
+		secretWarningStyle.Render("Warnings:"),
+	)
+	builder.WriteString("\n")
+
+	for _, warning := range warnings {
+		builder.WriteString("  ")
+
+		if warning.Resource != "" {
+			builder.WriteString(warning.Resource)
+			builder.WriteString(": ")
+		}
+
+		builder.WriteString(warning.Err.Error())
+		builder.WriteString("\n")
+	}
+}
+
+func renderSecretUsageReference(
+	reference kube.SecretUsageReference,
+) string {
+	var builder strings.Builder
+
+	if reference.Relation != "" {
+		builder.WriteString(reference.Relation)
+		builder.WriteString(": ")
+	}
+
+	if reference.Description != "" {
+		builder.WriteString(reference.Description)
+	}
+
+	detail := reference.Path
+
+	if reference.Key != "" &&
+		!strings.Contains(detail, "-> "+reference.Key) {
+		if detail != "" {
+			detail += " -> "
+		}
+
+		detail += reference.Key
+	}
+
+	if detail != "" {
+		if reference.Description != "" {
+			builder.WriteString(" (")
+			builder.WriteString(detail)
+			builder.WriteString(")")
+		} else {
+			builder.WriteString(detail)
+		}
+	}
+
+	return builder.String()
 }

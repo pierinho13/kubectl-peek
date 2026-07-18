@@ -4,22 +4,25 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"sort"
 	"strings"
 
+	"github.com/pierinho13/kubectl-peek/internal/config"
 	"github.com/pierinho13/kubectl-peek/internal/kubernetes"
 	"github.com/pierinho13/kubectl-peek/internal/ui"
 
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	kubeclient "github.com/pierinho13/kubectl-peek/internal/kubernetes"
 )
 
+const usageRulesEnvVar = "KUBECTL_PEEK_RULE_FILE"
+
 var (
-	namespace   string
-	contextName string
-	kubeconfig  string
+	namespace      string
+	contextName    string
+	kubeconfig     string
+	usageRulesFile string
 )
 
 var rootCmd = &cobra.Command{
@@ -66,6 +69,13 @@ func init() {
 		"",
 		"Path to the kubeconfig file",
 	)
+
+	rootCmd.Flags().StringVar(
+		&usageRulesFile,
+		"rules",
+		os.Getenv(usageRulesEnvVar),
+		"Path to a YAML file containing custom Secret usage rules; defaults to $KUBECTL_PEEK_RULE_FILE",
+	)
 }
 
 func Execute() error {
@@ -77,7 +87,7 @@ func runPeek(
 	out io.Writer,
 	pattern string,
 ) error {
-	client, err := kubeclient.NewClient(
+	client, err := kubernetes.NewClient(
 		kubeconfig,
 		contextName,
 		namespace,
@@ -86,7 +96,17 @@ func runPeek(
 		return err
 	}
 
-	secrets, err := client.Clientset.CoreV1().
+	usageRules, err := config.LoadUsageRules(
+		usageRulesFile,
+	)
+	if err != nil {
+		return err
+	}
+
+	client.UsageRules = usageRules
+
+	secrets, err := client.Clientset.
+		CoreV1().
 		Secrets(client.Namespace).
 		List(ctx, metav1.ListOptions{})
 	if err != nil {
@@ -97,7 +117,12 @@ func runPeek(
 		)
 	}
 
-	filteredSecrets := make([]string, 0, len(secrets.Items))
+	filteredSecrets := make(
+		[]string,
+		0,
+		len(secrets.Items),
+	)
+
 	normalizedPattern := strings.ToLower(pattern)
 
 	for _, secret := range secrets.Items {
@@ -138,9 +163,14 @@ func runPeek(
 		return err
 	}
 
-	secret, err := client.Clientset.CoreV1().
+	secret, err := client.Clientset.
+		CoreV1().
 		Secrets(client.Namespace).
-		Get(ctx, selectedSecret, metav1.GetOptions{})
+		Get(
+			ctx,
+			selectedSecret,
+			metav1.GetOptions{},
+		)
 	if err != nil {
 		return fmt.Errorf(
 			"get Secret %q: %w",
@@ -153,17 +183,24 @@ func runPeek(
 		return ui.RenderEmptySecretError(secret.Name)
 	}
 
-	usages, err := kubernetes.FindSecretUsages(
+	result, err := kubernetes.FindSecretUsagesDetailed(
 		ctx,
-		client.Clientset,
+		client,
 		client.Namespace,
 		secret.Name,
 	)
 	if err != nil {
-		return fmt.Errorf("find secret usages: %w", err)
+		return fmt.Errorf(
+			"find secret usages: %w",
+			err,
+		)
 	}
 
 	fmt.Fprintln(out)
-	fmt.Fprintln(out, ui.RenderSecret(secret, usages))
+	fmt.Fprintln(
+		out,
+		ui.RenderSecret(secret, result),
+	)
+
 	return nil
 }
