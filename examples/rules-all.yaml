@@ -1,0 +1,67 @@
+# Combined kubectl-peek rule examples
+#
+# Copy this file to:
+#
+#   ~/.config/kubectl-peek/rules.yaml
+#
+# Then configure:
+#
+#   export KUBECTL_PEEK_RULE_FILE="$HOME/.config/kubectl-peek/rules.yaml"
+#
+# Remove rules that do not apply to your cluster and add rules for your own
+# custom resources.
+
+rules:
+  # External Secrets Operator
+  - apiVersions:
+      - external-secrets.io/v1
+      - external-secrets.io/v1beta1
+    kind: ExternalSecret
+    resource: externalsecrets
+    references:
+      - path: spec.target.name
+        relation: produces
+        description: generated Secret
+
+  - apiVersions:
+      - external-secrets.io/v1
+      - external-secrets.io/v1beta1
+    kind: ClusterExternalSecret
+    resource: clusterexternalsecrets
+    references:
+      - path: spec.externalSecretSpec.target.name
+        relation: produces
+        description: generated Secret
+
+  # cert-manager
+  - apiVersions:
+      - cert-manager.io/v1
+    kind: Certificate
+    resource: certificates
+    references:
+      - path: spec.secretName
+        relation: produces
+        description: issued TLS Secret
+
+  # Example Crossplane claim used by a platform API
+  - apiVersions:
+      - db.infra.doodle.com/v1alpha1
+    kind: PostgreSQLInstance
+    resource: postgresqlinstances
+    references:
+      - path: spec.writeConnectionSecretToRef.name
+        relation: produces
+        description: connection Secret
+
+  # Generic internal application example
+  - apiVersions:
+      - example.io/v1
+    kind: Application
+    resource: applications
+    references:
+      - path: spec.credentials.secretRef.name
+        relation: uses
+        description: application credentials
+      - path: spec.backends.*.tls.secretName
+        relation: uses
+        description: backend TLS Secret
