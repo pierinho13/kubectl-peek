@@ -18,6 +18,8 @@ import (
 
 const usageRulesEnvVar = "KUBECTL_PEEK_RULE_FILE"
 
+var version = "dev"
+
 var (
 	namespace      string
 	contextName    string
@@ -28,6 +30,7 @@ var (
 var rootCmd = &cobra.Command{
 	Use:           "peek [pattern]",
 	Short:         "Interactively inspect Kubernetes Secrets",
+	Version:       version,
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	Args:          cobra.MaximumNArgs(1),
