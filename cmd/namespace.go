@@ -19,7 +19,7 @@ var namespaceShell bool
 var namespaceCmd = &cobra.Command{
 	Use:     "namespace [pattern]",
 	Aliases: []string{"namespaces", "ns"},
-	Short:   "Select the namespace for a Kubernetes context",
+	Short:   "Select the namespace for a Kubernetes context (--shell to open an isolated shell)",
 	Args:    cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var pattern string

@@ -5,18 +5,22 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/pierinho13/kubectl-peek)](https://goreportcard.com/report/github.com/pierinho13/kubectl-peek)
 [![License](https://img.shields.io/github/license/pierinho13/kubectl-peek)](LICENSE)
 
-`kubectl-peek` is a lightweight CLI for interactively browsing Kubernetes Secrets, inspecting their decoded values, and understanding which resources use, produce, or reference them.
+`kubectl-peek` is a lightweight, client-side Kubernetes productivity CLI for exploring cluster context, opening isolated working shells, switching namespaces, and inspecting Secrets together with the resources that use, produce, or reference them.
 
-Instead of only answering:
+It brings three everyday Kubernetes workflows into one fast interactive tool:
 
-> What is stored in this Secret?
+- **Inspect Secrets** and decode their values while discovering related workloads, operators, and custom resources.
+- **Open isolated Kubernetes shells** for a selected context and namespace without modifying the original kubeconfig.
+- **Select and persist namespaces** interactively for the active or explicitly selected context.
 
-`kubectl-peek` also helps answer:
+Typical questions and tasks include:
 
-- Which workloads use this Secret?
+- What is stored in this Secret?
+- Which workloads use it?
 - Which operator or custom resource produced it?
-- Which resources reference it?
-- What could be affected if the Secret changes or is deleted?
+- What could be affected if it changes or is deleted?
+- Which context and namespace should this terminal session use?
+- How can I work in another Kubernetes scope without changing my normal shell configuration?
 
 The tool runs entirely on the client side using your existing kubeconfig. It does not install controllers, agents, CRDs, web interfaces, or other components in the cluster.
 
@@ -26,23 +30,66 @@ The tool runs entirely on the client side using your existing kubeconfig. It doe
 
 ## Features
 
-- Interactive Secret selection.
-- Keyboard navigation, pagination, and interactive filtering.
-- Optional Secret-name filtering from the command line.
-- Namespace, context, and kubeconfig overrides.
-- Interactive namespace selection and persistent context updates.
+### Kubernetes shell workflows
+
 - Interactive context and namespace selection with `kubectl-peek shell`.
-- Isolated Kubernetes shells backed by temporary kubeconfigs.
-- Visible context and namespace indicators in temporary shell prompts.
+- Direct shell startup with `--context` and `--namespace`.
+- Isolated shells backed by temporary flattened kubeconfigs.
+- Visible context and namespace indicators in the temporary shell prompt.
+- Colored context and namespace prompt segments on supported terminals.
+- Early protection against nested isolated shells.
+- Temporary kubeconfig cleanup after leaving the shell.
+- Original kubeconfig remains unchanged.
+
+### Namespace workflows
+
+- Interactive namespace selection.
+- Keyboard navigation, pagination, and live filtering.
+- Persistent namespace updates for the selected kubeconfig context.
+- Optional initial namespace filtering.
+- Context and kubeconfig overrides.
+
+### Secret inspection
+
+- Interactive Secret selection.
+- Optional Secret-name filtering from the command line.
 - Decoded Secret values displayed directly in the terminal.
-- Built-in Secret relationship discovery.
-- Custom-resource discovery through declarative YAML rules.
+- Built-in relationship discovery for Kubernetes workloads and resources.
+- Declarative custom-resource discovery through YAML rules.
 - Support for `uses`, `produces`, and `references` relationships.
 - Automatic API-version selection for configured custom resources.
-- Support for wildcard paths in custom-resource rules.
+- Wildcard array traversal in custom-resource field paths.
+
+### General
+
 - Native `kubectl` plugin usage.
 - No cluster-side installation required.
 - Release binaries for macOS, Linux, and Windows.
+
+## Why `kubectl-peek`?
+
+Kubernetes users often jump between contexts, namespaces, terminal sessions, and Secret-related troubleshooting. Those tasks normally require a mix of `kubectl config`, temporary environment variables, manual kubeconfig copies, shell prompt customization, and several resource searches.
+
+`kubectl-peek` turns those workflows into focused commands:
+
+```text
+kubectl-peek
+├── secret       Inspect Secrets and their relationships
+├── namespace    Select and persist a namespace
+└── shell        Open an isolated context-aware Kubernetes shell
+```
+
+The root command displays help so every major workflow is immediately visible:
+
+```bash
+kubectl-peek
+```
+
+The same commands work through the native plugin form:
+
+```bash
+kubectl peek
+```
 
 ## How discovery works
 
@@ -130,6 +177,7 @@ Verify the installation:
 
 ```bash
 kubectl-peek --help
+kubectl-peek --version
 ```
 
 ### Build from source
@@ -153,50 +201,79 @@ sudo mv kubectl-peek /usr/local/bin/
 
 ## Quick start
 
-Run the standalone command:
+Show the available workflows:
 
 ```bash
 kubectl-peek
 ```
 
-Or use it as a native `kubectl` plugin:
+or:
 
 ```bash
 kubectl peek
 ```
 
-Both forms execute the same binary and provide the same functionality.
-
-To interactively select a namespace:
+Inspect Secrets in the current namespace:
 
 ```bash
-kubectl-peek namespace
+kubectl-peek secret
 ```
 
-To interactively select a Kubernetes context and namespace, then open an isolated shell:
+Open an isolated shell after selecting a context and namespace:
 
 ```bash
 kubectl-peek shell
 ```
 
-The equivalent native plugin command is:
+Select and persist a namespace for the active context:
 
 ```bash
-kubectl peek shell
+kubectl-peek namespace
 ```
 
-The existing namespace-first workflow is also available:
+The standalone and native plugin forms are equivalent:
 
 ```bash
-kubectl-peek namespace --shell
+kubectl-peek secret
+kubectl peek secret
+
+kubectl-peek shell
+kubectl peek shell
+
+kubectl-peek namespace
+kubectl peek namespace
 ```
 
 ## Usage
 
-### Browse Secrets in the current namespace
+### Command overview
+
+```text
+kubectl-peek [command]
+
+Available Commands:
+  secret      Inspect Kubernetes Secrets and their relationships
+  namespace   Select the namespace for a Kubernetes context
+  shell       Open an isolated shell for a Kubernetes context and namespace
+```
+
+Global flags inherited by the commands:
+
+```text
+--context string      Kubernetes context
+--kubeconfig string   Path to the kubeconfig file
+```
+
+### Inspect Secrets in the current namespace
 
 ```bash
-kubectl-peek
+kubectl-peek secret
+```
+
+Equivalent plugin command:
+
+```bash
+kubectl peek secret
 ```
 
 Example interactive view:
@@ -218,10 +295,10 @@ Press `Enter` to inspect the highlighted Secret.
 
 ### Filter by Secret name
 
-Pass a pattern as the first positional argument:
+Pass a pattern after the `secret` command:
 
 ```bash
-kubectl-peek database
+kubectl-peek secret database
 ```
 
 Matching is case-insensitive.
@@ -229,43 +306,43 @@ Matching is case-insensitive.
 Equivalent plugin command:
 
 ```bash
-kubectl peek database
+kubectl peek secret database
 ```
 
-### Use another namespace
+### Inspect Secrets in another namespace
 
 ```bash
-kubectl-peek -n staging
+kubectl-peek secret -n staging
 ```
 
 or:
 
 ```bash
-kubectl peek -n staging
+kubectl peek secret -n staging
 ```
 
-You can combine namespace selection with a name pattern:
+Combine namespace selection with a name pattern:
 
 ```bash
-kubectl-peek database -n staging
+kubectl-peek secret database -n staging
 ```
 
-### Use another Kubernetes context
+### Inspect Secrets through another context
 
 ```bash
-kubectl-peek --context development-cluster
+kubectl-peek secret --context development-cluster
 ```
 
 ### Use a specific kubeconfig
 
 ```bash
-kubectl-peek --kubeconfig ~/.kube/secondary-config
+kubectl-peek secret --kubeconfig ~/.kube/secondary-config
 ```
 
-### Combine options
+### Combine Secret options
 
 ```bash
-kubectl-peek database \
+kubectl-peek secret database \
   --context development-cluster \
   --namespace staging \
   --kubeconfig ~/.kube/secondary-config
@@ -274,20 +351,27 @@ kubectl-peek database \
 ### Load custom discovery rules
 
 ```bash
-kubectl-peek --rules ./rules.yaml
+kubectl-peek secret --rules ./rules.yaml
 ```
 
-You can combine custom rules with the other options:
+Combine custom rules with other options:
 
 ```bash
-kubectl-peek database \
+kubectl-peek secret database \
   --namespace staging \
   --rules ./examples/rules-all.yaml
 ```
 
+Aliases are also available:
+
+```bash
+kubectl-peek secrets
+kubectl-peek sec
+```
+
 ## Context and namespace selection and isolated shells
 
-Secret inspection is the main focus of `kubectl-peek`, but the tool also provides interactive context and namespace workflows for changing the active namespace or opening an isolated Kubernetes shell.
+`kubectl-peek` treats Secret inspection, namespace management, and isolated Kubernetes shells as first-class workflows.
 
 ### Select and persist a namespace
 
@@ -346,9 +430,9 @@ kubectl peek namespace
 kubectl peek ns
 ```
 
-### Open an isolated context-aware shell
+### Open an isolated context-aware Kubernetes shell
 
-Use `kubectl-peek shell` to select a Kubernetes context and then a namespace from that context:
+`kubectl-peek shell` is designed for safely working across multiple clusters and namespaces from separate terminal sessions. It selects a Kubernetes context and then a namespace from that context:
 
 ```bash
 kubectl-peek shell
@@ -433,7 +517,7 @@ run exit before opening another one
 
 Run `exit` before opening a different isolated shell.
 
-### Open an isolated namespace shell
+### Open a namespace-first isolated shell
 
 <img width="1800" height="800" alt="kubectl-peek-multi-namespace-shell" src="https://github.com/user-attachments/assets/fae7e6dd-1a36-491b-a4fe-0cbe5eaed4ee" />
 
@@ -509,16 +593,19 @@ Nested isolated shells are blocked to avoid accidentally creating multiple shell
 
 ## Interactive controls
 
+The Secret, namespace, and context selectors share the same interaction model:
+
 ```text
-↑ / ↓     Move through Secrets
+↑ / ↓     Move through results
+j / k     Move down or up
 ← / →     Change page when no interactive filter is active
-/         Start filtering the visible Secret list
-Enter     Select the highlighted Secret
+/         Start filtering the visible result list
+Enter     Select the highlighted result
 Esc       Leave filtering mode or cancel
 Ctrl+C    Cancel
 ```
 
-When the interactive filter is active, type any substring from the Secret name. The visible result list updates immediately.
+When the interactive filter is active, type any substring from the Secret, namespace, or context name. The visible result list updates immediately.
 
 ## Built-in Secret discovery
 
@@ -778,7 +865,7 @@ Custom rules are optional.
 ### With `--rules`
 
 ```bash
-kubectl-peek --rules ./rules.yaml
+kubectl-peek secret --rules ./rules.yaml
 ```
 
 ### With `KUBECTL_PEEK_RULE_FILE`
@@ -792,7 +879,7 @@ export KUBECTL_PEEK_RULE_FILE="$HOME/.config/kubectl-peek/rules.yaml"
 After that, running:
 
 ```bash
-kubectl-peek
+kubectl-peek secret
 ```
 
 automatically loads that file.
@@ -826,7 +913,7 @@ For example:
 ```bash
 export KUBECTL_PEEK_RULE_FILE="$HOME/.config/kubectl-peek/rules.yaml"
 
-kubectl-peek --rules ./temporary-rules.yaml
+kubectl-peek secret --rules ./temporary-rules.yaml
 ```
 
 uses `./temporary-rules.yaml` for that execution.
@@ -863,10 +950,56 @@ The repository includes reusable examples under [`examples/`](examples/):
 Start with:
 
 ```bash
-kubectl-peek --rules ./examples/rules-all.yaml
+kubectl-peek secret --rules ./examples/rules-all.yaml
 ```
 
 Review and customize the rules before using them in production environments. Operators and internal CRDs may use different field paths depending on their versions and configuration.
+
+## Common workflows
+
+### Investigate an application Secret
+
+```bash
+kubectl-peek secret database -n production
+```
+
+Select the Secret, inspect its decoded values, and review the workloads or custom resources connected to it.
+
+### Open an isolated production troubleshooting shell
+
+```bash
+kubectl-peek shell \
+  --context production   --namespace payments
+```
+
+Commands such as `kubectl`, `helm`, and `flux` use the temporary kubeconfig only inside that shell.
+
+### Work across multiple clusters in parallel
+
+Open separate terminal windows and run:
+
+```bash
+kubectl-peek shell --context staging -n payments
+kubectl-peek shell --context production -n payments
+```
+
+Each terminal keeps its own isolated Kubernetes scope visible in the prompt.
+
+### Persist a namespace for the active context
+
+```bash
+kubectl-peek namespace monitoring
+```
+
+Select a matching namespace and update the namespace stored in the chosen kubeconfig context.
+
+### Extend discovery for an internal CRD
+
+Create a YAML rule that points to the field containing the Secret name, then run:
+
+```bash
+kubectl-peek secret --rules ./company-rules.yaml
+```
 
 ## Permissions
 
@@ -988,7 +1121,7 @@ ls -l "$KUBECTL_PEEK_RULE_FILE"
 You can also pass it explicitly:
 
 ```bash
-kubectl-peek --rules "$HOME/.config/kubectl-peek/rules.yaml"
+kubectl-peek secret --rules "$HOME/.config/kubectl-peek/rules.yaml"
 ```
 
 ### A custom resource is not detected
@@ -1055,16 +1188,22 @@ Build the project:
 go build -o kubectl-peek .
 ```
 
-Run it locally:
+Show the local command help:
 
 ```bash
 ./kubectl-peek
 ```
 
+Run Secret inspection locally:
+
+```bash
+./kubectl-peek secret
+```
+
 Test custom rules:
 
 ```bash
-./kubectl-peek --rules ./examples/rules-all.yaml
+./kubectl-peek secret --rules ./examples/rules-all.yaml
 ```
 
 Test the isolated shell workflow:
@@ -1079,22 +1218,27 @@ Test the `kubectl` plugin form by placing the binary in your `PATH`:
 
 ```bash
 kubectl peek
+kubectl peek secret
+kubectl peek namespace
+kubectl peek shell
 ```
 
 ## Roadmap
 
 Potential future improvements include:
 
-- optional value masking
+- optional Secret value masking
 - explicit `--show-values` behavior
 - JSON and YAML output
-- non-interactive mode
+- non-interactive Secret inspection
 - dependency graph output
 - ConfigMap discovery
 - cross-namespace relationship discovery
 - recursive relationship inspection
 - reusable community rule collections
 - additional built-in resource finders
+- richer isolated-shell status and integrations
+- additional context and namespace productivity workflows
 
 ## License
 
