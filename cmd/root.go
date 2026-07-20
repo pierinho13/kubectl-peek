@@ -54,7 +54,10 @@ func init() {
 	//   kubectl-peek namespace
 	//   kubectl-peek ns
 	// to namespaceCmd instead of treating "namespace" as a Secret pattern.
-	rootCmd.AddCommand(namespaceCmd)
+	rootCmd.AddCommand(
+		namespaceCmd,
+		shellCmd,
+	)
 
 	rootCmd.Flags().StringVarP(
 		&namespace,

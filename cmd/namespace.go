@@ -52,6 +52,12 @@ func runNamespace(
 	pattern string,
 	openShell bool,
 ) error {
+	if openShell {
+		if err := kubernetes.EnsureNoActiveNamespaceShell(); err != nil {
+			return err
+		}
+	}
+
 	client, err := kubernetes.NewClient(
 		kubeconfig,
 		contextName,
