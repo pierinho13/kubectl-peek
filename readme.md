@@ -24,9 +24,6 @@ Typical questions and tasks include:
 
 The tool runs entirely on the client side using your existing kubeconfig. It does not install controllers, agents, CRDs, web interfaces, or other components in the cluster.
 
-<img width="1000" height="583" alt="kubectl-peek-demo-small" src="https://github.com/user-attachments/assets/b13f3b4d-da5b-46ed-97bb-ba07d3001e61" />
-
-
 
 ## Features
 
@@ -49,6 +46,8 @@ The tool runs entirely on the client side using your existing kubeconfig. It doe
 - Optional initial namespace filtering.
 - Context and kubeconfig overrides.
 
+<img width="1800" height="800" alt="kubectl-peek-multi-namespace-shell" src="https://github.com/user-attachments/assets/9eb0f303-cc02-4cc2-b434-ead0ceb10c35" />
+
 ### Secret inspection
 
 - Interactive Secret selection.
@@ -59,6 +58,11 @@ The tool runs entirely on the client side using your existing kubeconfig. It doe
 - Support for `uses`, `produces`, and `references` relationships.
 - Automatic API-version selection for configured custom resources.
 - Wildcard array traversal in custom-resource field paths.
+
+
+<img width="1200" height="700" alt="kubectl-peek-demo-reducido" src="https://github.com/user-attachments/assets/02ec34c5-f82a-443c-a3f1-a03a2c9d5489" />
+
+
 
 ### General
 
