@@ -585,7 +585,7 @@ uses `./temporary-rules.yaml` for that execution.
 
 ```text
 Secret: garage-admin-token
-Namespace: devbox-sre-3
+Namespace: sandbox-3
 Type: Opaque
 Used by:
   ExternalSecret/garage-admin-token
@@ -828,7 +828,7 @@ After selecting a namespace, `kubectl-peek` updates the default namespace of the
 You can also provide an initial namespace filter:
 
 ```bash
-kubectl-peek namespace devbox
+kubectl-peek namespace sandbox
 ```
 
 The equivalent native plugin commands are:
