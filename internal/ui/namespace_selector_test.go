@@ -31,17 +31,17 @@ func TestNamespaceSelectorFiltersCaseInsensitively(
 	model := newNamespaceSelectorModel(
 		[]string{
 			"monitoring",
-			"devbox-sre-3",
-			"devbox-platform",
+			"sandbox-3",
+			"sandbox-platform",
 		},
 	)
 
-	model.filter = []rune("DEVBOX")
+	model.filter = []rune("SANDBOX")
 	model.applyFilter()
 
 	want := []string{
-		"devbox-platform",
-		"devbox-sre-3",
+		"sandbox-3",
+		"sandbox-platform",
 	}
 
 	if !reflect.DeepEqual(model.filteredNamespaces, want) {
@@ -59,6 +59,7 @@ func TestNamespaceSelectorPagination(t *testing.T) {
 	model := newNamespaceSelectorModel(
 		[]string{"ns-01", "ns-02", "ns-03"},
 	)
+
 	model.pageSize = 2
 	model.nextPage()
 

@@ -31,7 +31,8 @@ The tool runs entirely on the client side using your existing kubeconfig. It doe
 - Optional Secret-name filtering from the command line.
 - Namespace, context, and kubeconfig overrides.
 - Interactive namespace selection and persistent context updates.
-- Isolated namespace shells backed by temporary kubeconfigs.
+- Interactive context and namespace selection with `kubectl-peek shell`.
+- Isolated Kubernetes shells backed by temporary kubeconfigs.
 - Visible context and namespace indicators in temporary shell prompts.
 - Decoded Secret values displayed directly in the terminal.
 - Built-in Secret relationship discovery.
@@ -172,7 +173,19 @@ To interactively select a namespace:
 kubectl-peek namespace
 ```
 
-To open an isolated shell scoped to a selected namespace:
+To interactively select a Kubernetes context and namespace, then open an isolated shell:
+
+```bash
+kubectl-peek shell
+```
+
+The equivalent native plugin command is:
+
+```bash
+kubectl peek shell
+```
+
+The existing namespace-first workflow is also available:
 
 ```bash
 kubectl-peek namespace --shell
@@ -272,9 +285,9 @@ kubectl-peek database \
   --rules ./examples/rules-all.yaml
 ```
 
-## Namespace selection and isolated shells
+## Context and namespace selection and isolated shells
 
-Secret inspection is the main focus of `kubectl-peek`, but the tool also provides an interactive namespace workflow for quickly changing or isolating the namespace used by Kubernetes commands.
+Secret inspection is the main focus of `kubectl-peek`, but the tool also provides interactive context and namespace workflows for changing the active namespace or opening an isolated Kubernetes shell.
 
 ### Select and persist a namespace
 
@@ -332,6 +345,93 @@ The equivalent native plugin commands are:
 kubectl peek namespace
 kubectl peek ns
 ```
+
+### Open an isolated context-aware shell
+
+Use `kubectl-peek shell` to select a Kubernetes context and then a namespace from that context:
+
+```bash
+kubectl-peek shell
+```
+
+The native plugin form behaves identically:
+
+```bash
+kubectl peek shell
+```
+
+The interactive flow is:
+
+```text
+Select a Kubernetes context
+            │
+            ▼
+List namespaces available through that context
+            │
+            ▼
+Select a namespace
+            │
+            ▼
+Create a temporary kubeconfig and open an isolated shell
+```
+
+A Kubernetes context is selected instead of a cluster directly because a context identifies the cluster and the credentials used to access it. After the context is known, `kubectl-peek` connects through that context and lists its available namespaces.
+
+You can skip either selector by passing its value directly.
+
+Use a specific context and select only the namespace:
+
+```bash
+kubectl-peek shell --context operations
+```
+
+Select a context interactively and use a specific namespace:
+
+```bash
+kubectl-peek shell --namespace traefik
+```
+
+or with the short namespace flag:
+
+```bash
+kubectl-peek shell -n traefik
+```
+
+Open the shell without interactive selectors:
+
+```bash
+kubectl-peek shell \
+  --context operations \
+  --namespace traefik
+```
+
+A namespace supplied through `--namespace` is validated against the selected context before the shell starts.
+
+The command also supports a separate kubeconfig:
+
+```bash
+kubectl-peek shell \
+  --kubeconfig ~/.kube/secondary-config
+```
+
+The following forms are equivalent:
+
+```bash
+kubectl-peek shell
+kubectl peek shell
+```
+
+When no flags are supplied, the original kubeconfig and its current context are not modified. The selected context and namespace are applied only to the temporary kubeconfig used by the child shell.
+
+If an isolated shell is already active, another one is rejected immediately, before displaying the context or namespace selectors:
+
+```text
+an isolated kubectl-peek shell is already active
+(context "operations", namespace "traefik");
+run exit before opening another one
+```
+
+Run `exit` before opening a different isolated shell.
 
 ### Open an isolated namespace shell
 
@@ -405,7 +505,7 @@ The temporary directory is removed after leaving the shell normally:
 exit
 ```
 
-Nested `kubectl-peek` namespace shells are blocked to avoid accidentally creating multiple shell layers.
+Nested isolated shells are blocked to avoid accidentally creating multiple shell layers. The check happens before opening an interactive selector for both `kubectl-peek shell` and `kubectl-peek namespace --shell`.
 
 ## Interactive controls
 
@@ -923,9 +1023,9 @@ Possible reasons include:
 
 The discovery result should be treated as helpful dependency information, not as a guarantee that deleting a Secret is safe.
 
-### Verify the active namespace shell
+### Verify the active isolated shell
 
-Inside an isolated namespace shell, inspect the temporary configuration with:
+Inside an isolated shell opened with `kubectl-peek shell` or `kubectl-peek namespace --shell`, inspect the temporary configuration with:
 
 ```bash
 echo "$KUBECONFIG"
@@ -965,6 +1065,14 @@ Test custom rules:
 
 ```bash
 ./kubectl-peek --rules ./examples/rules-all.yaml
+```
+
+Test the isolated shell workflow:
+
+```bash
+./kubectl-peek shell
+./kubectl-peek shell --context operations
+./kubectl-peek shell --context operations --namespace traefik
 ```
 
 Test the `kubectl` plugin form by placing the binary in your `PATH`:
