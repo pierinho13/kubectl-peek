@@ -315,7 +315,6 @@ func findObjectRuleReferences(
 			rule.Path,
 		)
 		if err != nil {
-			// La ruta ya fue validada antes de procesar los objetos.
 			continue
 		}
 
