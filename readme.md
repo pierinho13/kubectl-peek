@@ -335,6 +335,14 @@ kubectl peek ns
 
 ### Open an isolated namespace shell
 
+<img width="1800" height="800" alt="kubectl-peek-multi-namespace-shell" src="https://github.com/user-attachments/assets/fae7e6dd-1a36-491b-a4fe-0cbe5eaed4ee" />
+
+
+
+
+
+
+
 Use `--shell` to open a child shell scoped to the selected context and namespace without modifying the original kubeconfig:
 
 ```bash
