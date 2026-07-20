@@ -585,7 +585,7 @@ uses `./temporary-rules.yaml` for that execution.
 
 ```text
 Secret: garage-admin-token
-Namespace: devbox-sre-3
+Namespace: sandbox-3
 Type: Opaque
 Used by:
   ExternalSecret/garage-admin-token
@@ -805,6 +805,40 @@ Test the `kubectl` plugin form by placing the binary in your `PATH`:
 kubectl peek
 ```
 
+## Additional functionality
+
+Although Secret inspection is the main focus of `kubectl-peek`, the tool also includes a small namespace helper.
+
+Run:
+
+```bash
+kubectl-peek namespace
+```
+
+or use the shorter alias:
+
+```bash
+kubectl-peek ns
+```
+
+This opens an interactive, paginated namespace selector with the same keyboard navigation and filtering behavior used by the Secret selector.
+
+After selecting a namespace, `kubectl-peek` updates the default namespace of the active kubeconfig context and prints the context that was changed.
+
+You can also provide an initial namespace filter:
+
+```bash
+kubectl-peek namespace sandbox
+```
+
+The equivalent native plugin commands are:
+
+```bash
+kubectl peek namespace
+kubectl peek ns
+```
+
+This functionality is provided as a convenience and does not change the primary purpose of `kubectl-peek`, which is inspecting Kubernetes Secrets and their relationships.
 
 ## Roadmap
 
