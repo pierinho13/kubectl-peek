@@ -27,6 +27,7 @@ builds:
     ldflags:
       - -s
       - -w
+      - -X github.com/pierinho13/kubectl-peek/cmd.version={{ .Version }}
 
 archives:
   - id: cli
