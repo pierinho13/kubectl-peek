@@ -15,6 +15,14 @@ import (
 
 const namespaceShellEnvironment = "KUBECTL_PEEK_SHELL"
 
+const (
+	ansiBold   = "\033[1m"
+	ansiCyan   = "\033[36m"
+	ansiYellow = "\033[33m"
+	ansiDim    = "\033[2m"
+	ansiReset  = "\033[0m"
+)
+
 func RunNamespaceShell(
 	kubeconfig string,
 	contextName string,
@@ -67,10 +75,40 @@ func RunNamespaceShell(
 	}
 
 	fmt.Fprintln(out)
-	fmt.Fprintln(out, "Entered kubectl-peek namespace shell")
-	fmt.Fprintf(out, "Context:   %s\n", targetContext)
-	fmt.Fprintf(out, "Namespace: %s\n", namespace)
-	fmt.Fprintln(out, "Run `exit` to return to the previous shell.")
+	fmt.Fprintf(
+		out,
+		"%s%s┌─ kubectl-peek namespace shell%s\n",
+		ansiBold,
+		ansiCyan,
+		ansiReset,
+	)
+	fmt.Fprintf(
+		out,
+		"%s│%s Context    %s%s%s\n",
+		ansiCyan,
+		ansiReset,
+		ansiBold,
+		targetContext,
+		ansiReset,
+	)
+	fmt.Fprintf(
+		out,
+		"%s│%s Namespace  %s%s%s%s\n",
+		ansiCyan,
+		ansiReset,
+		ansiBold,
+		ansiYellow,
+		namespace,
+		ansiReset,
+	)
+	fmt.Fprintf(
+		out,
+		"%s└─%s %sType `exit` to return to the previous shell%s\n",
+		ansiCyan,
+		ansiReset,
+		ansiDim,
+		ansiReset,
+	)
 	fmt.Fprintln(out)
 
 	command.Env = environment

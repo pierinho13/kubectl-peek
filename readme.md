@@ -30,6 +30,9 @@ The tool runs entirely on the client side using your existing kubeconfig. It doe
 - Keyboard navigation, pagination, and interactive filtering.
 - Optional Secret-name filtering from the command line.
 - Namespace, context, and kubeconfig overrides.
+- Interactive namespace selection and persistent context updates.
+- Isolated namespace shells backed by temporary kubeconfigs.
+- Visible context and namespace indicators in temporary shell prompts.
 - Decoded Secret values displayed directly in the terminal.
 - Built-in Secret relationship discovery.
 - Custom-resource discovery through declarative YAML rules.
@@ -163,6 +166,18 @@ kubectl peek
 
 Both forms execute the same binary and provide the same functionality.
 
+To interactively select a namespace:
+
+```bash
+kubectl-peek namespace
+```
+
+To open an isolated shell scoped to a selected namespace:
+
+```bash
+kubectl-peek namespace --shell
+```
+
 ## Usage
 
 ### Browse Secrets in the current namespace
@@ -256,6 +271,133 @@ kubectl-peek database \
   --namespace staging \
   --rules ./examples/rules-all.yaml
 ```
+
+## Namespace selection and isolated shells
+
+Secret inspection is the main focus of `kubectl-peek`, but the tool also provides an interactive namespace workflow for quickly changing or isolating the namespace used by Kubernetes commands.
+
+### Select and persist a namespace
+
+Run:
+
+```bash
+kubectl-peek namespace
+```
+
+or use the shorter alias:
+
+```bash
+kubectl-peek ns
+```
+
+This opens an interactive, paginated namespace selector with keyboard navigation and filtering.
+
+Example:
+
+```text
+Select a namespace
+Use ↑/↓ to move, ←/→ to change page, and / to filter.
+
+  default
+  monitoring
+> traefik
+  flux-system
+  kube-system
+
+Page 1/4 · 37 namespaces
+```
+
+After selecting a namespace, `kubectl-peek` updates the default namespace of the active kubeconfig context:
+
+```text
+Context "staging" now uses namespace "traefik"
+```
+
+You can provide an initial namespace filter:
+
+```bash
+kubectl-peek namespace traefik
+```
+
+You can also target a specific context or kubeconfig:
+
+```bash
+kubectl-peek namespace --context staging
+kubectl-peek namespace --kubeconfig ~/.kube/secondary-config
+```
+
+The equivalent native plugin commands are:
+
+```bash
+kubectl peek namespace
+kubectl peek ns
+```
+
+### Open an isolated namespace shell
+
+Use `--shell` to open a child shell scoped to the selected context and namespace without modifying the original kubeconfig:
+
+```bash
+kubectl-peek namespace --shell
+```
+
+You can combine it with an initial filter:
+
+```bash
+kubectl-peek namespace traefik --shell
+```
+
+Or select a context explicitly:
+
+```bash
+kubectl-peek namespace \
+  --context staging \
+  --shell
+```
+
+When the shell starts, `kubectl-peek` displays the active scope:
+
+```text
+┌─ kubectl-peek namespace shell
+│ Context    staging
+│ Namespace  traefik
+└─ Type `exit` to return to the previous shell
+```
+
+The child-shell prompt keeps the active Kubernetes scope visible:
+
+```text
+[k8s:staging ns:traefik] piero@MacBook-Pro %
+```
+
+The context is displayed in cyan and the namespace in yellow on terminals that support standard ANSI colors.
+
+Commands executed inside the shell use the temporary kubeconfig:
+
+```bash
+kubectl get pods
+kubectl get services
+helm list
+flux get all
+```
+
+The temporary kubeconfig:
+
+- contains the complete effective Kubernetes configuration
+- preserves clusters, users, contexts, authentication and exec plugins
+- embeds certificate and key data referenced by file paths
+- changes only the selected context namespace
+- is created with `0600` permissions
+- is exposed only to the child shell through `KUBECONFIG`
+- does not modify the original kubeconfig
+
+The temporary directory is removed after leaving the shell normally:
+
+```bash
+exit
+```
+
+Nested `kubectl-peek` namespace shells are blocked to avoid accidentally creating multiple shell layers.
 
 ## Interactive controls
 
@@ -773,6 +915,24 @@ Possible reasons include:
 
 The discovery result should be treated as helpful dependency information, not as a guarantee that deleting a Secret is safe.
 
+### Verify the active namespace shell
+
+Inside an isolated namespace shell, inspect the temporary configuration with:
+
+```bash
+echo "$KUBECONFIG"
+kubectl config current-context
+kubectl config view --minify -o jsonpath='{..namespace}{"\n"}'
+```
+
+The prompt should also show the selected context and namespace:
+
+```text
+[k8s:staging ns:traefik] piero@MacBook-Pro %
+```
+
+Run `exit` to return to the previous shell and remove the temporary files.
+
 ## Development
 
 Run all tests:
@@ -804,41 +964,6 @@ Test the `kubectl` plugin form by placing the binary in your `PATH`:
 ```bash
 kubectl peek
 ```
-
-## Additional functionality
-
-Although Secret inspection is the main focus of `kubectl-peek`, the tool also includes a small namespace helper.
-
-Run:
-
-```bash
-kubectl-peek namespace
-```
-
-or use the shorter alias:
-
-```bash
-kubectl-peek ns
-```
-
-This opens an interactive, paginated namespace selector with the same keyboard navigation and filtering behavior used by the Secret selector.
-
-After selecting a namespace, `kubectl-peek` updates the default namespace of the active kubeconfig context and prints the context that was changed.
-
-You can also provide an initial namespace filter:
-
-```bash
-kubectl-peek namespace sandbox
-```
-
-The equivalent native plugin commands are:
-
-```bash
-kubectl peek namespace
-kubectl peek ns
-```
-
-This functionality is provided as a convenience and does not change the primary purpose of `kubectl-peek`, which is inspecting Kubernetes Secrets and their relationships.
 
 ## Roadmap
 
