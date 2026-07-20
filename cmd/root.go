@@ -50,11 +50,10 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	// This registration is what makes Cobra route:
-	//   kubectl-peek namespace
-	//   kubectl-peek ns
-	// to namespaceCmd instead of treating "namespace" as a Secret pattern.
-	rootCmd.AddCommand(namespaceCmd)
+	rootCmd.AddCommand(
+		namespaceCmd,
+		shellCmd,
+	)
 
 	rootCmd.Flags().StringVarP(
 		&namespace,

@@ -468,3 +468,26 @@ func shellQuote(value string) string {
 		`'\''`,
 	) + "'"
 }
+
+func EnsureNoActiveNamespaceShell() error {
+	if os.Getenv(namespaceShellEnvironment) == "" {
+		return nil
+	}
+
+	currentContext := os.Getenv("KUBECTL_PEEK_CONTEXT")
+	currentNamespace := os.Getenv("KUBECTL_PEEK_NAMESPACE")
+
+	if currentContext != "" && currentNamespace != "" {
+		return fmt.Errorf(
+			"an isolated kubectl-peek shell is already active "+
+				"(context %q, namespace %q); run exit before opening another one",
+			currentContext,
+			currentNamespace,
+		)
+	}
+
+	return fmt.Errorf(
+		"an isolated kubectl-peek shell is already active; " +
+			"run exit before opening another one",
+	)
+}

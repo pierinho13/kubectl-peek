@@ -262,7 +262,6 @@ func TestFindSecretUsages(t *testing.T) {
 			},
 		},
 
-		// Este recurso referencia otro Secret y no debe aparecer.
 		&appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "unrelated",
