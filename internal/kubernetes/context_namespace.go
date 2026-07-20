@@ -11,11 +11,7 @@ func SetContextNamespace(
 	contextName string,
 	namespace string,
 ) (string, error) {
-	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
-
-	if kubeconfig != "" {
-		loadingRules.ExplicitPath = kubeconfig
-	}
+	loadingRules := newLoadingRules(kubeconfig)
 
 	config, err := loadingRules.Load()
 	if err != nil {
@@ -25,26 +21,16 @@ func SetContextNamespace(
 		)
 	}
 
-	targetContext := contextName
-	if targetContext == "" {
-		targetContext = config.CurrentContext
+	targetContext, err := resolveContextName(
+		config.CurrentContext,
+		config.Contexts,
+		contextName,
+	)
+	if err != nil {
+		return "", err
 	}
 
-	if targetContext == "" {
-		return "", fmt.Errorf(
-			"Kubernetes configuration has no current context",
-		)
-	}
-
-	currentContext, ok := config.Contexts[targetContext]
-	if !ok || currentContext == nil {
-		return "", fmt.Errorf(
-			"Kubernetes context %q not found",
-			targetContext,
-		)
-	}
-
-	updatedContext := currentContext.DeepCopy()
+	updatedContext := config.Contexts[targetContext].DeepCopy()
 	updatedContext.Namespace = namespace
 	config.Contexts[targetContext] = updatedContext
 
@@ -62,4 +48,16 @@ func SetContextNamespace(
 	}
 
 	return targetContext, nil
+}
+
+func newLoadingRules(
+	kubeconfig string,
+) *clientcmd.ClientConfigLoadingRules {
+	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
+
+	if kubeconfig != "" {
+		loadingRules.ExplicitPath = kubeconfig
+	}
+
+	return loadingRules
 }

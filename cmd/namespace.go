@@ -14,6 +14,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+var namespaceShell bool
+
 var namespaceCmd = &cobra.Command{
 	Use:     "namespace [pattern]",
 	Aliases: []string{"namespaces", "ns"},
@@ -30,14 +32,25 @@ var namespaceCmd = &cobra.Command{
 			cmd.Context(),
 			cmd.OutOrStdout(),
 			pattern,
+			namespaceShell,
 		)
 	},
+}
+
+func init() {
+	namespaceCmd.Flags().BoolVar(
+		&namespaceShell,
+		"shell",
+		false,
+		"Open an isolated shell using the selected namespace",
+	)
 }
 
 func runNamespace(
 	ctx context.Context,
 	out io.Writer,
 	pattern string,
+	openShell bool,
 ) error {
 	client, err := kubernetes.NewClient(
 		kubeconfig,
@@ -85,6 +98,15 @@ func runNamespace(
 	selectedNamespace, err := ui.SelectNamespace(namespaces)
 	if err != nil {
 		return err
+	}
+
+	if openShell {
+		return kubernetes.RunNamespaceShell(
+			kubeconfig,
+			contextName,
+			selectedNamespace,
+			out,
+		)
 	}
 
 	changedContext, err := kubernetes.SetContextNamespace(
