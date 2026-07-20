@@ -34,7 +34,6 @@ var rootCmd = &cobra.Command{
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	Args:          cobra.MaximumNArgs(1),
-
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var pattern string
 
@@ -51,6 +50,12 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
+	// This registration is what makes Cobra route:
+	//   kubectl-peek namespace
+	//   kubectl-peek ns
+	// to namespaceCmd instead of treating "namespace" as a Secret pattern.
+	rootCmd.AddCommand(namespaceCmd)
+
 	rootCmd.Flags().StringVarP(
 		&namespace,
 		"namespace",
@@ -59,14 +64,14 @@ func init() {
 		"Kubernetes namespace",
 	)
 
-	rootCmd.Flags().StringVar(
+	rootCmd.PersistentFlags().StringVar(
 		&contextName,
 		"context",
 		"",
 		"Kubernetes context",
 	)
 
-	rootCmd.Flags().StringVar(
+	rootCmd.PersistentFlags().StringVar(
 		&kubeconfig,
 		"kubeconfig",
 		"",
