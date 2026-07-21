@@ -62,7 +62,19 @@ The tool runs entirely on the client side using your existing kubeconfig. It doe
 
 <img width="1200" height="700" alt="kubectl-peek-demo-reducido" src="https://github.com/user-attachments/assets/02ec34c5-f82a-443c-a3f1-a03a2c9d5489" />
 
+### Kubernetes event inspection
 
+- Interactive Kubernetes Event browser ordered by latest occurrence.
+- Grouped repeated events with clear occurrence counts, first/last seen timestamps, filtering, pagination, and detailed event inspection.
+- Warning-focused and non-normal views through `--warnings` and `--non-normal`.
+- Optional raw Event-object view with `--no-group`.
+
+### Event drill-down browsing
+
+- Hierarchical exploration with `--browse` or `--browse-by-kind`.
+- Navigate through `Kind → Resource → Events → Detail`.
+- Aggregated resource, event, and occurrence counts at each level.
+- Compatible with namespace, all-namespace, warning, non-normal, and text filters.
 
 ### General
 
