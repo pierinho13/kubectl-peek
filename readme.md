@@ -36,7 +36,7 @@ Everyday Kubernetes troubleshooting often requires several disconnected commands
 | Events | Group noisy Events and drill into affected resources | `kubectl peek events --warnings --browse` |
 | Secrets | Decode a Secret and discover who uses or produces it | `kubectl peek secret` |
 | Pod access | Select the correct Pod and container interactively | `kubectl peek exec` |
-| Namespace | Select and persist a namespace without remembering its name | `kubectl peek namespace` |
+| Namespace | Select a namespace and either persist it or open an isolated shell within it | `kubectl peek namespace` |
 
 ## Isolated Kubernetes shells
 
