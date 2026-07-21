@@ -68,8 +68,6 @@ kubectl peek namespace monitoring
 kubectl peek namespace --context staging
 ```
 
-![kubectl-peek namespace workflow](https://github.com/user-attachments/assets/9eb0f303-cc02-4cc2-b434-ead0ceb10c35)
-
 A namespace-first isolated shell is also available:
 
 ```bash
