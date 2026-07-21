@@ -63,8 +63,10 @@ The tool runs entirely on the client side using your existing kubeconfig. It doe
 - Automatic API-version selection for configured custom resources.
 - Wildcard array traversal in custom-resource field paths.
 
+<img width="1200" height="700" alt="kubectl-peek-demo" src="https://github.com/user-attachments/assets/c6c5b2ac-0ea4-4774-8315-12021e88e829" />
 
-<img width="1200" height="700" alt="kubectl-peek-demo-reducido" src="https://github.com/user-attachments/assets/02ec34c5-f82a-443c-a3f1-a03a2c9d5489" />
+
+
 
 ### Kubernetes event inspection
 
@@ -857,6 +859,16 @@ Kubernetes clusters frequently rely on operators and CRDs that create or consume
 Hardcoding every possible operator in `kubectl-peek` would be difficult to maintain and would prevent users from supporting private CRDs.
 
 Instead, custom relationships are described with a declarative YAML rules file.
+
+
+<img width="1200" height="700" alt="kubectl-peek-demo-part-2" src="https://github.com/user-attachments/assets/cc221426-06b2-4c7d-ab71-934b6b6e623f" />
+
+
+
+
+
+
+
 
 ### Example: External Secrets Operator
 
