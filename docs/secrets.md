@@ -8,7 +8,6 @@ Select and inspect Secrets in the current namespace:
 kubectl peek secret
 ```
 
-![kubectl-peek Secret inspection](https://github.com/user-attachments/assets/02ec34c5-f82a-443c-a3f1-a03a2c9d5489)
 
 The selector supports pagination, filtering and keyboard navigation. Press `Enter` to inspect the highlighted Secret.
 
@@ -89,5 +88,9 @@ Load a declarative rule file:
 kubectl peek secret --rules ./rules.yaml
 kubectl peek secret --rules ./examples/rules-all.yaml
 ```
+
+
+<img width="1200" height="700" alt="kubectl-peek-demo-part-2" src="https://github.com/user-attachments/assets/7570e334-2c32-46dc-a960-ef4a33e0f6a7" />
+
 
 See [Custom discovery rules](rules.md).
