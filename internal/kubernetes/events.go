@@ -9,17 +9,17 @@ import (
 )
 
 type EventRecord struct {
-	Namespace string
-	Type      string
-	Reason    string
-	Kind      string
-	Name      string
-	Message   string
-	Source    string
+	Namespace    string
+	Type         string
+	Reason       string
+	Kind         string
+	Name         string
+	Message      string
+	Source       string
 	Count        int32
 	EventObjects int
 	FirstSeen    time.Time
-	LastSeen  time.Time
+	LastSeen     time.Time
 }
 
 func EventRecords(
@@ -106,17 +106,17 @@ func eventRecord(event *corev1.Event) EventRecord {
 	}
 
 	return EventRecord{
-		Namespace: event.Namespace,
-		Type:      event.Type,
-		Reason:    event.Reason,
-		Kind:      event.InvolvedObject.Kind,
-		Name:      event.InvolvedObject.Name,
-		Message:   event.Message,
-		Source:    source,
+		Namespace:    event.Namespace,
+		Type:         event.Type,
+		Reason:       event.Reason,
+		Kind:         event.InvolvedObject.Kind,
+		Name:         event.InvolvedObject.Name,
+		Message:      event.Message,
+		Source:       source,
 		Count:        count,
 		EventObjects: 1,
 		FirstSeen:    firstSeen,
-		LastSeen:  lastSeen,
+		LastSeen:     lastSeen,
 	}
 }
 
