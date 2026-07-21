@@ -1,4 +1,4 @@
-<img width="1400" height="760" alt="kubectl-peek-events-inspection" src="https://github.com/user-attachments/assets/d17ebe19-eaf5-48aa-860d-4ae4436b4d37" /># kubectl-peek
+# kubectl-peek
 
 [![CI](https://github.com/pierinho13/kubectl-peek/actions/workflows/ci.yaml/badge.svg)](https://github.com/pierinho13/kubectl-peek/actions/workflows/ci.yaml)
 [![Release](https://img.shields.io/github/v/release/pierinho13/kubectl-peek)](https://github.com/pierinho13/kubectl-peek/releases)
