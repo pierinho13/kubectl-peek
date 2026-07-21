@@ -30,6 +30,7 @@ func TestRootCommandDisplaysHelp(t *testing.T) {
 		"secret",
 		"namespace",
 		"shell",
+		"exec",
 	}
 
 	for _, expected := range expectedParts {

@@ -26,6 +26,7 @@ func init() {
 		secretCmd,
 		namespaceCmd,
 		shellCmd,
+		execCmd,
 	)
 
 	rootCmd.PersistentFlags().StringVar(
