@@ -1,4 +1,4 @@
-# kubectl-peek
+<img width="1400" height="760" alt="kubectl-peek-events-inspection" src="https://github.com/user-attachments/assets/d17ebe19-eaf5-48aa-860d-4ae4436b4d37" /># kubectl-peek
 
 [![CI](https://github.com/pierinho13/kubectl-peek/actions/workflows/ci.yaml/badge.svg)](https://github.com/pierinho13/kubectl-peek/actions/workflows/ci.yaml)
 [![Release](https://img.shields.io/github/v/release/pierinho13/kubectl-peek)](https://github.com/pierinho13/kubectl-peek/releases)
@@ -38,6 +38,8 @@ The tool runs entirely on the client side using your existing kubeconfig. It doe
 - Temporary kubeconfig cleanup after leaving the shell.
 - Original kubeconfig remains unchanged.
 
+<img width="1800" height="800" alt="kubectl-peek-shell-workflows" src="https://github.com/user-attachments/assets/94bd4178-0ecf-4750-bc31-1e46e155200b" />
+
 ### Namespace workflows
 
 - Interactive namespace selection.
@@ -68,13 +70,30 @@ The tool runs entirely on the client side using your existing kubeconfig. It doe
 - Grouped repeated events with clear occurrence counts, first/last seen timestamps, filtering, pagination, and detailed event inspection.
 - Warning-focused and non-normal views through `--warnings` and `--non-normal`.
 - Optional raw Event-object view with `--no-group`.
-
-### Event drill-down browsing
-
-- Hierarchical exploration with `--browse` or `--browse-by-kind`.
+- ##### Hierarchical exploration with `--browse` or `--browse-by-kind`.
 - Navigate through `Kind → Resource → Events → Detail`.
 - Aggregated resource, event, and occurrence counts at each level.
 - Compatible with namespace, all-namespace, warning, non-normal, and text filters.
+
+<img width="1400" height="760" alt="kubectl-peek-events-inspection" src="https://github.com/user-attachments/assets/ca59b59a-ab7c-4140-8e50-10b3f38b0efd" />
+
+### Kubernetes pod exec
+
+- Interactive Pod selection with readiness, container count, and current phase information.
+- Optional Pod-name filtering directly from the command line.
+- Automatic container selection when the Pod has only one container.
+- Interactive container selection for multi-container Pods.
+- Opens an interactive shell directly inside the selected container.
+- Automatically tries `/bin/bash` and falls back to `/bin/sh` when needed.
+- Supports explicit namespace, context, kubeconfig, container, and shell overrides.
+- Direct interactive access with `kubectl-peek exec`.
+- Navigate through `Pod → Container → Interactive shell`.
+- Run troubleshooting commands inside the container and return with `exit`.
+- Compatible with namespace, context, kubeconfig, Pod-name, container, and shell filters.
+
+<img width="1200" height="700" alt="kubectl-peek-exec" src="https://github.com/user-attachments/assets/1a46465c-e129-4a63-9200-0658fed6de94" />
+
+
 
 ### General
 
