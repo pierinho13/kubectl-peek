@@ -9,7 +9,7 @@
 
 It brings five everyday Kubernetes workflows into one fast interactive tool:
 
-- **Inspect Secrets** and decode their values while discovering related workloads, operators, and custom resources.
+- **Inspect Secrets** interactively, optionally redact their values, and discover related workloads, operators, and custom resources only when requested.
 - **Browse Kubernetes Events** with grouping, filtering, occurrence counts, detailed views, and resource drill-down.
 - **Exec into Pods interactively** by selecting a Pod and, when needed, one of its containers.
 - **Open isolated Kubernetes shells** for a selected context and namespace without modifying the original kubeconfig.
@@ -56,7 +56,9 @@ The tool runs entirely on the client side using your existing kubeconfig. It doe
 
 - Interactive Secret selection.
 - Optional Secret-name filtering from the command line.
-- Decoded Secret values displayed directly in the terminal.
+- Decoded Secret values displayed directly in the terminal by default.
+- Optional value redaction through `--show-values=false`, preserving each key and its byte length.
+- Relationship discovery is opt-in through `--show-usage`.
 - Built-in relationship discovery for Kubernetes workloads and resources.
 - Declarative custom-resource discovery through YAML rules.
 - Support for `uses`, `produces`, and `references` relationships.
@@ -132,7 +134,13 @@ kubectl peek
 
 ## How discovery works
 
-`kubectl-peek` combines two discovery mechanisms.
+Secret relationship discovery is enabled explicitly with `--show-usage`.
+
+```bash
+kubectl-peek secret --show-usage
+```
+
+When enabled, `kubectl-peek` combines two discovery mechanisms.
 
 ### Built-in discovery
 
@@ -258,6 +266,18 @@ Inspect Secrets in the current namespace:
 kubectl-peek secret
 ```
 
+Inspect a Secret and discover related resources:
+
+```bash
+kubectl-peek secret --show-usage
+```
+
+Inspect a Secret while keeping values redacted:
+
+```bash
+kubectl-peek secret --show-values=false
+```
+
 Browse Warning Events:
 
 ```bash
@@ -358,6 +378,8 @@ Page 1/3 · 24 Secrets
 
 Press `Enter` to inspect the highlighted Secret.
 
+By default, `kubectl-peek` displays decoded Secret values and does not perform relationship discovery. This keeps the common inspection path fast and avoids unnecessary API calls or permission warnings.
+
 ### Filter by Secret name
 
 Pass a pattern after the `secret` command:
@@ -413,10 +435,68 @@ kubectl-peek secret database \
   --kubeconfig ~/.kube/secondary-config
 ```
 
-### Load custom discovery rules
+### Discover resources related to a Secret
+
+Relationship discovery is disabled by default.
+
+Enable it explicitly with:
 
 ```bash
-kubectl-peek secret --rules ./rules.yaml
+kubectl-peek secret --show-usage
+```
+
+This searches supported built-in Kubernetes resources and configured custom-resource rules for relationships such as `uses`, `produces`, and `references`.
+
+You can combine it with a name filter and namespace:
+
+```bash
+kubectl-peek secret database \
+  --namespace staging \
+  --show-usage
+```
+
+When no supported relationship is found, the output explains that the result is not a guarantee that the Secret is unused:
+
+```text
+Used by:
+  No references were found among the supported built-in resources and configured usage rules.
+  This does not guarantee that the Secret is unused; unsupported resources, external systems, or unconfigured custom resources may still reference it.
+```
+
+### Hide Secret values
+
+Decoded Secret values are shown by default.
+
+Redact them with:
+
+```bash
+kubectl-peek secret --show-values=false
+```
+
+The key names remain visible and each value is replaced with its byte length:
+
+```text
+password:
+────────────────────────────────────────────────────────────
+<redacted: 24 bytes>
+```
+
+Relationship discovery and value redaction can be combined:
+
+```bash
+kubectl-peek secret \
+  --show-usage \
+  --show-values=false
+```
+
+### Load custom discovery rules
+
+Custom rules are only evaluated when relationship discovery is enabled:
+
+```bash
+kubectl-peek secret \
+  --show-usage \
+  --rules ./rules.yaml
 ```
 
 Combine custom rules with other options:
@@ -424,6 +504,7 @@ Combine custom rules with other options:
 ```bash
 kubectl-peek secret database \
   --namespace staging \
+  --show-usage \
   --rules ./examples/rules-all.yaml
 ```
 
@@ -801,7 +882,7 @@ When the interactive filter is active, type a matching substring. The visible re
 
 ## Built-in Secret discovery
 
-Without additional configuration, `kubectl-peek` searches supported resources in the selected namespace.
+With `--show-usage`, `kubectl-peek` searches supported resources in the selected namespace without requiring additional configuration.
 
 The built-in discovery currently includes common workload and Secret-related resources such as:
 
@@ -843,11 +924,12 @@ Used by:
     uses: environment variable (container/backup env/BACKUP_PASSWORD -> password)
 ```
 
-When no supported resource references the Secret:
+When no supported resource or configured rule references the Secret:
 
 ```text
 Used by:
-  none
+  No references were found among the supported built-in resources and configured usage rules.
+  This does not guarantee that the Secret is unused; unsupported resources, external systems, or unconfigured custom resources may still reference it.
 ```
 
 ## Custom resource discovery
@@ -1057,7 +1139,9 @@ Custom rules are optional.
 ### With `--rules`
 
 ```bash
-kubectl-peek secret --rules ./rules.yaml
+kubectl-peek secret \
+  --show-usage \
+  --rules ./rules.yaml
 ```
 
 ### With `KUBECTL_PEEK_RULE_FILE`
@@ -1071,10 +1155,10 @@ export KUBECTL_PEEK_RULE_FILE="$HOME/.config/kubectl-peek/rules.yaml"
 After that, running:
 
 ```bash
-kubectl-peek secret
+kubectl-peek secret --show-usage
 ```
 
-automatically loads that file.
+automatically loads that file for relationship discovery.
 
 A common setup is:
 
@@ -1105,7 +1189,7 @@ For example:
 ```bash
 export KUBECTL_PEEK_RULE_FILE="$HOME/.config/kubectl-peek/rules.yaml"
 
-kubectl-peek secret --rules ./temporary-rules.yaml
+kubectl-peek secret --show-usage --rules ./temporary-rules.yaml
 ```
 
 uses `./temporary-rules.yaml` for that execution.
@@ -1142,7 +1226,9 @@ The repository includes reusable examples under [`examples/`](examples/):
 Start with:
 
 ```bash
-kubectl-peek secret --rules ./examples/rules-all.yaml
+kubectl-peek secret \
+  --show-usage \
+  --rules ./examples/rules-all.yaml
 ```
 
 Review and customize the rules before using them in production environments. Operators and internal CRDs may use different field paths depending on their versions and configuration.
@@ -1152,10 +1238,12 @@ Review and customize the rules before using them in production environments. Ope
 ### Investigate an application Secret
 
 ```bash
-kubectl-peek secret database -n production
+kubectl-peek secret database \
+  -n production \
+  --show-usage
 ```
 
-Select the Secret, inspect its decoded values, and review the workloads or custom resources connected to it.
+Select the Secret, inspect its decoded values, and review the supported workloads or custom resources connected to it.
 
 ### Open an isolated production troubleshooting shell
 
@@ -1214,12 +1302,14 @@ Select a matching namespace and update the namespace stored in the chosen kubeco
 Create a YAML rule that points to the field containing the Secret name, then run:
 
 ```bash
-kubectl-peek secret --rules ./company-rules.yaml
+kubectl-peek secret \
+  --show-usage \
+  --rules ./company-rules.yaml
 ```
 
 ## Permissions
 
-The active Kubernetes identity must have the permissions required by the selected workflow. Secret inspection requires reading Secrets and listing related resources, Event inspection requires listing Events, and Pod exec requires listing/getting Pods plus access to the `pods/exec` subresource.
+The active Kubernetes identity must have the permissions required by the selected workflow. Basic Secret inspection only requires reading Secrets. Related-resource permissions are needed only when `--show-usage` is enabled. Event inspection requires listing Events, and Pod exec requires listing/getting Pods plus access to the `pods/exec` subresource.
 
 ### Secret access
 
@@ -1335,7 +1425,7 @@ Insufficient permissions may prevent some relationships from being discovered.
 
 ## Security notice
 
-`kubectl-peek` prints decoded Secret values directly to the terminal.
+`kubectl-peek` prints decoded Secret values directly to the terminal by default. Use `--show-values=false` when values should remain hidden.
 
 Those values may remain visible in:
 
@@ -1367,10 +1457,12 @@ Then verify that the file exists:
 ls -l "$KUBECTL_PEEK_RULE_FILE"
 ```
 
-You can also pass it explicitly:
+You can also pass it explicitly while enabling discovery:
 
 ```bash
-kubectl-peek secret --rules "$HOME/.config/kubectl-peek/rules.yaml"
+kubectl-peek secret \
+  --show-usage \
+  --rules "$HOME/.config/kubectl-peek/rules.yaml"
 ```
 
 ### A custom resource is not detected
@@ -1395,7 +1487,15 @@ kubectl auth can-i list pods -n default
 kubectl auth can-i create pods/exec -n default
 ```
 
-### The Secret has no `Used by` entries
+### The Secret has no `Used by` section
+
+The `Used by` section is only displayed when `--show-usage` is enabled:
+
+```bash
+kubectl-peek secret --show-usage
+```
+
+### No supported Secret relationships are found
 
 Possible reasons include:
 
@@ -1471,10 +1571,19 @@ Run Secret inspection locally:
 ./kubectl-peek secret
 ```
 
+Test Secret redaction and usage discovery:
+
+```bash
+./kubectl-peek secret --show-values=false
+./kubectl-peek secret --show-usage
+```
+
 Test custom rules:
 
 ```bash
-./kubectl-peek secret --rules ./examples/rules-all.yaml
+./kubectl-peek secret \
+  --show-usage \
+  --rules ./examples/rules-all.yaml
 ```
 
 Test Event inspection and browse mode:
@@ -1515,8 +1624,6 @@ kubectl peek shell
 
 Potential future improvements include:
 
-- optional Secret value masking
-- explicit `--show-values` behavior
 - JSON and YAML output
 - non-interactive Secret inspection
 - dependency graph output
