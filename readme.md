@@ -84,7 +84,7 @@ The tool runs entirely on the client side using your existing kubeconfig. It doe
 
 ## Why `kubectl-peek`?
 
-Kubernetes users often jump between contexts, namespaces, terminal sessions, and Secret-related troubleshooting. Those tasks normally require a mix of `kubectl config`, temporary environment variables, manual kubeconfig copies, shell prompt customization, and several resource searches.
+Kubernetes users often jump between contexts, namespaces, terminal sessions, Pod troubleshooting, Event inspection, and Secret-related investigation. Those tasks normally require a mix of `kubectl config`, temporary environment variables, manual kubeconfig copies, shell prompt customization, repeated `kubectl get` commands, and several resource searches.
 
 `kubectl-peek` turns those workflows into focused commands:
 
@@ -92,9 +92,10 @@ Kubernetes users often jump between contexts, namespaces, terminal sessions, and
 kubectl-peek
 ├── secret       Inspect Secrets and their relationships
 ├── namespace    Select and persist a namespace
-└── shell        Open an isolated context-aware Kubernetes shell
+├── shell        Open an isolated context-aware Kubernetes shell
+├── exec         Open an interactive shell inside a selected Pod
+└── events       Browse, filter, group, and inspect Kubernetes Events
 ```
-
 The root command displays help so every major workflow is immediately visible:
 
 ```bash
