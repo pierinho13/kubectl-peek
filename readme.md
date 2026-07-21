@@ -5,20 +5,22 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/pierinho13/kubectl-peek)](https://goreportcard.com/report/github.com/pierinho13/kubectl-peek)
 [![License](https://img.shields.io/github/license/pierinho13/kubectl-peek)](LICENSE)
 
-`kubectl-peek` is a lightweight, client-side Kubernetes productivity CLI for exploring cluster context, opening isolated working shells, switching namespaces, and inspecting Secrets together with the resources that use, produce, or reference them.
+`kubectl-peek` is a lightweight, client-side Kubernetes productivity CLI for inspecting Secrets and their relationships, browsing Kubernetes Events, opening interactive Pod shells, switching namespaces, and creating isolated context-aware terminal sessions.
 
-It brings three everyday Kubernetes workflows into one fast interactive tool:
+It brings five everyday Kubernetes workflows into one fast interactive tool:
 
 - **Inspect Secrets** and decode their values while discovering related workloads, operators, and custom resources.
+- **Browse Kubernetes Events** with grouping, filtering, occurrence counts, detailed views, and resource drill-down.
+- **Exec into Pods interactively** by selecting a Pod and, when needed, one of its containers.
 - **Open isolated Kubernetes shells** for a selected context and namespace without modifying the original kubeconfig.
 - **Select and persist namespaces** interactively for the active or explicitly selected context.
 
 Typical questions and tasks include:
 
-- What is stored in this Secret?
-- Which workloads use it?
-- Which operator or custom resource produced it?
-- What could be affected if it changes or is deleted?
+- What is stored in this Secret, and which resources use or produce it?
+- Which Warning Events are happening now, and how long have they been recurring?
+- Which resource kinds and objects account for the most Event occurrences?
+- Which Pod and container should I open for interactive troubleshooting?
 - Which context and namespace should this terminal session use?
 - How can I work in another Kubernetes scope without changing my normal shell configuration?
 
@@ -70,7 +72,7 @@ The tool runs entirely on the client side using your existing kubeconfig. It doe
 - Grouped repeated events with clear occurrence counts, first/last seen timestamps, filtering, pagination, and detailed event inspection.
 - Warning-focused and non-normal views through `--warnings` and `--non-normal`.
 - Optional raw Event-object view with `--no-group`.
-- ##### Hierarchical exploration with `--browse` or `--browse-by-kind`.
+- Hierarchical exploration with `--browse` or `--browse-by-kind`.
 - Navigate through `Kind → Resource → Events → Detail`.
 - Aggregated resource, event, and occurrence counts at each level.
 - Compatible with namespace, all-namespace, warning, non-normal, and text filters.
@@ -103,7 +105,7 @@ The tool runs entirely on the client side using your existing kubeconfig. It doe
 
 ## Why `kubectl-peek`?
 
-Kubernetes users often jump between contexts, namespaces, terminal sessions, Pod troubleshooting, Event inspection, and Secret-related investigation. Those tasks normally require a mix of `kubectl config`, temporary environment variables, manual kubeconfig copies, shell prompt customization, repeated `kubectl get` commands, and several resource searches.
+Kubernetes users often jump between contexts, namespaces, terminal sessions, Pod troubleshooting, Event inspection, and Secret-related investigation. Those tasks normally require a mix of `kubectl config`, temporary environment variables, manual kubeconfig copies, shell prompt customization, repeated `kubectl get` and `kubectl describe` commands, and several resource searches.
 
 `kubectl-peek` turns those workflows into focused commands:
 
@@ -115,6 +117,7 @@ kubectl-peek
 ├── exec         Open an interactive shell inside a selected Pod
 └── events       Browse, filter, group, and inspect Kubernetes Events
 ```
+
 The root command displays help so every major workflow is immediately visible:
 
 ```bash
@@ -255,6 +258,24 @@ Inspect Secrets in the current namespace:
 kubectl-peek secret
 ```
 
+Browse Warning Events:
+
+```bash
+kubectl-peek events --warnings
+```
+
+Browse Events by resource kind and resource:
+
+```bash
+kubectl-peek events --warnings --browse
+```
+
+Open an interactive shell inside a selected Pod:
+
+```bash
+kubectl-peek exec
+```
+
 Open an isolated shell after selecting a context and namespace:
 
 ```bash
@@ -272,6 +293,12 @@ The standalone and native plugin forms are equivalent:
 ```bash
 kubectl-peek secret
 kubectl peek secret
+
+kubectl-peek events --warnings
+kubectl peek events --warnings
+
+kubectl-peek exec
+kubectl peek exec
 
 kubectl-peek shell
 kubectl peek shell
@@ -291,6 +318,8 @@ Available Commands:
   secret      Inspect Kubernetes Secrets and their relationships
   namespace   Select the namespace for a Kubernetes context
   shell       Open an isolated shell for a Kubernetes context and namespace
+  exec        Open an interactive shell in a Kubernetes Pod
+  events      Browse Kubernetes Events ordered by last occurrence
 ```
 
 Global flags inherited by the commands:
@@ -405,9 +434,136 @@ kubectl-peek secrets
 kubectl-peek sec
 ```
 
+## Pod exec
+
+Use `kubectl-peek exec` to select a Pod interactively and open a shell inside one of its containers:
+
+```bash
+kubectl-peek exec
+```
+
+The selector shows the Pod name, readiness, container count, and current phase. Completed and failed Pods are excluded.
+
+The interactive flow is:
+
+```text
+Select a Pod
+      │
+      ▼
+Select a container when the Pod has more than one
+      │
+      ▼
+Open /bin/bash or fall back to /bin/sh
+```
+
+Filter Pods by name:
+
+```bash
+kubectl-peek exec api
+```
+
+Use another namespace:
+
+```bash
+kubectl-peek exec -n staging
+```
+
+Select a specific container or shell directly:
+
+```bash
+kubectl-peek exec api \
+  --namespace staging \
+  --container application \
+  --shell /bin/sh
+```
+
+The `x` alias is also available:
+
+```bash
+kubectl-peek x
+kubectl peek x
+```
+
+Exit the container shell with `exit`.
+
+## Kubernetes Event inspection
+
+Browse Events in the current namespace:
+
+```bash
+kubectl-peek events
+```
+
+Events are ordered by their latest occurrence and repeated records are grouped by default. The table shows the latest occurrence, Event type, reason, involved object, and total occurrences.
+
+Press `Enter` to display the selected Event's exact occurrence count, first-seen and last-seen timestamps, source, namespace, object, and message.
+
+Show only Warning Events:
+
+```bash
+kubectl-peek events --warnings
+```
+
+Show every non-Normal Event type:
+
+```bash
+kubectl-peek events --non-normal
+```
+
+Show raw Event objects without grouping:
+
+```bash
+kubectl-peek events --no-group
+```
+
+Search across Event fields:
+
+```bash
+kubectl-peek events backoff
+```
+
+Use another namespace or all namespaces:
+
+```bash
+kubectl-peek events -n staging
+kubectl-peek events -A
+```
+
+### Browse Events by resource
+
+Use `--browse` or `--browse-by-kind` for hierarchical exploration:
+
+```bash
+kubectl-peek events --warnings --browse
+```
+
+The navigation flow is:
+
+```text
+Kind → Resource → Events → Detail
+```
+
+The first screen aggregates resources, Events, and occurrences by Kubernetes kind. The second shows the resources belonging to the selected kind. The final Event list contains only records related to the selected resource.
+
+Browse mode works together with the other Event filters:
+
+```bash
+kubectl-peek events --non-normal --browse
+kubectl-peek events backoff --browse
+kubectl-peek events -A --warnings --browse
+kubectl-peek events --no-group --browse
+```
+
+Aliases are also available:
+
+```bash
+kubectl-peek event
+kubectl-peek ev
+```
+
 ## Context and namespace selection and isolated shells
 
-`kubectl-peek` treats Secret inspection, namespace management, and isolated Kubernetes shells as first-class workflows.
+`kubectl-peek` treats Secret inspection, Event browsing, Pod exec, namespace management, and isolated Kubernetes shells as first-class workflows.
 
 ### Select and persist a namespace
 
@@ -629,7 +785,7 @@ Nested isolated shells are blocked to avoid accidentally creating multiple shell
 
 ## Interactive controls
 
-The Secret, namespace, and context selectors share the same interaction model:
+The Secret, namespace, context, Pod, container, Event, kind, and resource selectors share the same interaction model:
 
 ```text
 ↑ / ↓     Move through results
@@ -641,7 +797,7 @@ Esc       Leave filtering mode or cancel
 Ctrl+C    Cancel
 ```
 
-When the interactive filter is active, type any substring from the Secret, namespace, or context name. The visible result list updates immediately.
+When the interactive filter is active, type a matching substring. The visible result list updates immediately. Event filtering searches across several Event fields, while the other selectors filter by the visible resource or object name.
 
 ## Built-in Secret discovery
 
@@ -849,7 +1005,7 @@ Nested example:
 path: spec.credentials.secretRef.name
 ```
 
-Array fields can be traversed with `*`.
+Array fields can be traversed with `[*]`.
 
 Example object:
 
@@ -867,13 +1023,13 @@ spec:
 Matching rule:
 
 ```yaml
-path: spec.backends.*.credentials.secretName
+path: spec.backends[*].credentials.secretName
 ```
 
 Nested arrays are also supported:
 
 ```yaml
-path: spec.groups.*.targets.*.secretRef.name
+path: spec.groups[*].targets[*].secretRef.name
 ```
 
 Use paths that resolve directly to the Secret name string.
@@ -1021,6 +1177,30 @@ kubectl-peek shell --context production -n payments
 
 Each terminal keeps its own isolated Kubernetes scope visible in the prompt.
 
+### Investigate recurring Warning Events
+
+```bash
+kubectl-peek events --warnings
+```
+
+Select an Event to inspect its occurrence count, first-seen and last-seen timestamps, source, and full message.
+
+### Find the noisiest resources by Event kind
+
+```bash
+kubectl-peek events --warnings --browse
+```
+
+Navigate through resource kind, resource, matching Events, and Event details.
+
+### Open a shell in an application Pod
+
+```bash
+kubectl-peek exec application -n production
+```
+
+Select the Pod and container, run troubleshooting commands, and leave the container with `exit`.
+
 ### Persist a namespace for the active context
 
 ```bash
@@ -1039,7 +1219,7 @@ kubectl-peek secret --rules ./company-rules.yaml
 
 ## Permissions
 
-The active Kubernetes identity must be allowed to read Secrets and list the resources used for discovery.
+The active Kubernetes identity must have the permissions required by the selected workflow. Secret inspection requires reading Secrets and listing related resources, Event inspection requires listing Events, and Pod exec requires listing/getting Pods plus access to the `pods/exec` subresource.
 
 ### Secret access
 
@@ -1051,6 +1231,36 @@ resources:
 verbs:
   - get
   - list
+```
+
+### Event inspection access
+
+```yaml
+apiGroups:
+  - ""
+resources:
+  - events
+verbs:
+  - list
+```
+
+### Pod exec access
+
+```yaml
+apiGroups:
+  - ""
+resources:
+  - pods
+verbs:
+  - get
+  - list
+---
+apiGroups:
+  - ""
+resources:
+  - pods/exec
+verbs:
+  - create
 ```
 
 ### Common built-in discovery access
@@ -1116,6 +1326,9 @@ kubectl auth can-i list secrets -n default
 kubectl auth can-i get secrets -n default
 kubectl auth can-i list deployments.apps -n default
 kubectl auth can-i list externalsecrets.external-secrets.io -n default
+kubectl auth can-i list events -n default
+kubectl auth can-i list pods -n default
+kubectl auth can-i create pods/exec -n default
 ```
 
 Insufficient permissions may prevent some relationships from being discovered.
@@ -1177,6 +1390,9 @@ Useful commands:
 kubectl api-resources | grep -i external
 kubectl get externalsecrets.external-secrets.io -n default
 kubectl auth can-i list externalsecrets.external-secrets.io -n default
+kubectl auth can-i list events -n default
+kubectl auth can-i list pods -n default
+kubectl auth can-i create pods/exec -n default
 ```
 
 ### The Secret has no `Used by` entries
@@ -1191,6 +1407,25 @@ Possible reasons include:
 - the Secret is used externally rather than through the Kubernetes API
 
 The discovery result should be treated as helpful dependency information, not as a guarantee that deleting a Secret is safe.
+
+### No Events are displayed
+
+Check that Events exist in the selected namespace, the active identity can list them, and the selected filters are not excluding every record.
+
+```bash
+kubectl get events -n default
+kubectl auth can-i list events -n default
+```
+
+### Pod exec does not open a shell
+
+Check that the Pod is running, the selected container exists, the active identity can create `pods/exec`, and the requested shell exists inside the container.
+
+```bash
+kubectl get pods -n default
+kubectl auth can-i create pods/exec -n default
+kubectl exec -n default <pod> -- /bin/sh
+```
 
 ### Verify the active isolated shell
 
@@ -1242,6 +1477,21 @@ Test custom rules:
 ./kubectl-peek secret --rules ./examples/rules-all.yaml
 ```
 
+Test Event inspection and browse mode:
+
+```bash
+./kubectl-peek events --warnings
+./kubectl-peek events --warnings --browse
+./kubectl-peek events -A --non-normal
+```
+
+Test Pod exec:
+
+```bash
+./kubectl-peek exec
+./kubectl-peek exec api -n staging
+```
+
 Test the isolated shell workflow:
 
 ```bash
@@ -1255,6 +1505,8 @@ Test the `kubectl` plugin form by placing the binary in your `PATH`:
 ```bash
 kubectl peek
 kubectl peek secret
+kubectl peek events --warnings
+kubectl peek exec
 kubectl peek namespace
 kubectl peek shell
 ```
@@ -1274,6 +1526,9 @@ Potential future improvements include:
 - reusable community rule collections
 - additional built-in resource finders
 - richer isolated-shell status and integrations
+- additional Event sorting and export formats
+- optional live Event refresh
+- Pod log browsing and container diagnostics
 - additional context and namespace productivity workflows
 
 ## License
