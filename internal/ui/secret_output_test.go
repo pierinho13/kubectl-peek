@@ -57,7 +57,7 @@ func TestRenderSecretIncludesUsagesAndWarnings(t *testing.T) {
 		},
 	}
 
-	output := RenderSecret(secret, result)
+	output := RenderSecret(secret, result, true, true)
 
 	expectedParts := []string{
 		"Secret:",
@@ -81,6 +81,68 @@ func TestRenderSecretIncludesUsagesAndWarnings(t *testing.T) {
 				output,
 			)
 		}
+	}
+}
+
+func TestRenderSecretHidesUsages(t *testing.T) {
+	t.Parallel()
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "database-credentials",
+			Namespace: "test",
+		},
+		Data: map[string][]byte{
+			"username": []byte("admin"),
+		},
+	}
+
+	result := kube.SecretUsageResult{
+		Usages: []kube.SecretUsage{
+			{
+				Kind: "Deployment",
+				Name: "backend",
+			},
+		},
+	}
+
+	output := RenderSecret(secret, result, false, true)
+
+	if strings.Contains(output, "Used by:") {
+		t.Fatalf("expected usages to be hidden\n\n%s", output)
+	}
+
+	if !strings.Contains(output, "admin") {
+		t.Fatalf("expected Secret value to remain visible\n\n%s", output)
+	}
+}
+
+func TestRenderSecretRedactsValuesWithByteCount(t *testing.T) {
+	t.Parallel()
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "database-credentials",
+			Namespace: "test",
+		},
+		Data: map[string][]byte{
+			"username": []byte("admin"),
+		},
+	}
+
+	output := RenderSecret(
+		secret,
+		kube.SecretUsageResult{},
+		false,
+		false,
+	)
+
+	if strings.Contains(output, "admin") {
+		t.Fatalf("expected Secret value to be redacted\n\n%s", output)
+	}
+
+	if !strings.Contains(output, "<redacted: 5 bytes>") {
+		t.Fatalf("expected redacted byte count\n\n%s", output)
 	}
 }
 
