@@ -27,6 +27,7 @@ func init() {
 		namespaceCmd,
 		shellCmd,
 		execCmd,
+		eventsCmd,
 	)
 
 	rootCmd.PersistentFlags().StringVar(
