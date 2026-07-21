@@ -1,6 +1,6 @@
 # kubectl-peek
 
-[![CI](https://github.com/pierinho13/kubectl-peek/actions/workflows/ci.yml/badge.svg)](https://github.com/pierinho13/kubectl-peek/actions)
+[![CI](https://github.com/pierinho13/kubectl-peek/actions/workflows/ci.yaml/badge.svg)](https://github.com/pierinho13/kubectl-peek/actions/workflows/ci.yaml)
 [![Release](https://img.shields.io/github/v/release/pierinho13/kubectl-peek)](https://github.com/pierinho13/kubectl-peek/releases)
 [![Go Report Card](https://goreportcard.com/badge/github.com/pierinho13/kubectl-peek)](https://goreportcard.com/report/github.com/pierinho13/kubectl-peek)
 [![License](https://img.shields.io/github/license/pierinho13/kubectl-peek)](LICENSE)
