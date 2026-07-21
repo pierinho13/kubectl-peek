@@ -8,10 +8,9 @@ Set TypingSpeed 60ms
 Set Theme "Dracula"
 
 # First run: built-in Secret discovery
-Type "kubectl-peek"
+Type "kubectl-peek secret"
 Enter
-Sleep 2s
-
+Sleep 500ms
 Right
 Sleep 500ms
 Right
@@ -20,15 +19,11 @@ Sleep 500ms
 Type "/"
 Sleep 500ms
 Type "apm-server-apm-config"
-Sleep 2s
-
 Enter
-Sleep 3s
+Sleep 100ms
 
-ScrollUp@250ms 12
+ScrollUp@250ms 40
 Sleep 1s
-ScrollDown@250ms 12
-Sleep 3s
 
 # Exit kubectl-peek
 Ctrl+C
@@ -41,9 +36,7 @@ Type "cat $HOME/.config/kubectl-peek/rules.yaml"
 Enter
 Sleep 2s
 
-ScrollUp@250ms 10
-Sleep 1s
-ScrollDown@250ms 10
+ScrollUp@250ms 30
 Sleep 2s
 
 # Configure the rule file through the environment variable
@@ -52,26 +45,17 @@ Enter
 Sleep 1s
 
 # Second run: built-in and custom rule discovery
-Ctrl+L
-Sleep 500ms
-Type "kubectl-peek -n airflow"
+Type "clear"
 Enter
-Sleep 2s
-
+Type "kubectl-peek secret -n airflow"
+Enter
 Right
-Sleep 500ms
 Right
-Sleep 500ms
 
 Type "/"
-Sleep 500ms
 Type "airflow-metadata-db"
-Sleep 2s
-
 Enter
-Sleep 3s
+Sleep 100ms
 
-ScrollUp@250ms 12
+ScrollUp@250ms 35
 Sleep 1s
-ScrollDown@250ms 12
-Sleep 3s
