@@ -11,18 +11,25 @@ Set Theme "Dracula"
 Type "kubectl-peek secret"
 Enter
 Sleep 500ms
-Right
+Down
+Down
+Down
+Down
+Down
+Down
 Sleep 500ms
-Right
-Sleep 500ms
+Enter
 
+Type "kubectl-peek secret -n monitoring --show-usage"
+Enter
+Sleep 500ms
 Type "/"
 Sleep 500ms
-Type "apm-server-apm-config"
+Type "grafana"
 Enter
 Sleep 100ms
 
-ScrollUp@250ms 40
+ScrollUp@250ms 100
 Sleep 1s
 
 # Exit kubectl-peek
@@ -30,13 +37,18 @@ Ctrl+C
 Sleep 1s
 
 # Show the custom rule file
-Ctrl+L
-Sleep 500ms
-Type "cat $HOME/.config/kubectl-peek/rules.yaml"
+Hide
+Type "unset KUBECTL_PEEK_RULE_FILE"
 Enter
-Sleep 2s
-
-ScrollUp@250ms 30
+Show
+Type "clear"
+Enter
+Sleep 500ms
+Type "more $HOME/.config/kubectl-peek/rules.yaml"
+Enter
+Enter
+Enter
+Type q 
 Sleep 2s
 
 # Configure the rule file through the environment variable
@@ -47,15 +59,13 @@ Sleep 1s
 # Second run: built-in and custom rule discovery
 Type "clear"
 Enter
-Type "kubectl-peek secret -n airflow"
+Type "kubectl-peek secret -n monitoring --show-usage"
 Enter
-Right
-Right
 
 Type "/"
-Type "airflow-metadata-db"
+Type "grafana"
 Enter
 Sleep 100ms
 
-ScrollUp@250ms 35
+ScrollUp@250ms 100
 Sleep 1s

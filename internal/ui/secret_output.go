@@ -30,6 +30,8 @@ var (
 func RenderSecret(
 	secret *corev1.Secret,
 	result kube.SecretUsageResult,
+	showUsage bool,
+	showValues bool,
 ) string {
 	var builder strings.Builder
 
@@ -37,8 +39,10 @@ func RenderSecret(
 	renderMetadataLine(&builder, "Namespace", secret.Namespace)
 	renderMetadataLine(&builder, "Type", string(secret.Type))
 
-	renderSecretUsages(&builder, result.Usages)
-	renderSecretWarnings(&builder, result.Warnings)
+	if showUsage {
+		renderSecretUsages(&builder, result.Usages)
+		renderSecretWarnings(&builder, result.Warnings)
+	}
 
 	keys := make([]string, 0, len(secret.Data))
 
@@ -49,9 +53,9 @@ func RenderSecret(
 	sort.Strings(keys)
 
 	for _, key := range keys {
-		value := strings.TrimSuffix(
-			string(secret.Data[key]),
-			"\n",
+		value := renderSecretValue(
+			secret.Data[key],
+			showValues,
 		)
 
 		builder.WriteString("\n")
@@ -68,6 +72,23 @@ func RenderSecret(
 	}
 
 	return strings.TrimRight(builder.String(), "\n")
+}
+
+func renderSecretValue(
+	value []byte,
+	showValue bool,
+) string {
+	if !showValue {
+		return fmt.Sprintf(
+			"<redacted: %d bytes>",
+			len(value),
+		)
+	}
+
+	return strings.TrimSuffix(
+		string(value),
+		"\n",
+	)
 }
 
 func renderMetadataLine(
@@ -100,7 +121,18 @@ func renderSecretUsages(
 	builder.WriteString("\n")
 
 	if len(usages) == 0 {
-		builder.WriteString("  none")
+		builder.WriteString(
+			"  No references were found among the supported " +
+				"built-in resources and configured usage rules.",
+		)
+		builder.WriteString("\n")
+		builder.WriteString(
+			descriptionStyle.Render(
+				"  This does not guarantee that the Secret is unused; " +
+					"unsupported resources, external systems, or " +
+					"unconfigured custom resources may still reference it.",
+			),
+		)
 		builder.WriteString("\n")
 
 		return
