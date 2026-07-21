@@ -21,6 +21,8 @@ const usageRulesEnvVar = "KUBECTL_PEEK_RULE_FILE"
 var (
 	secretNamespace      string
 	secretUsageRulesFile string
+	secretShowUsage      bool
+	secretShowValues     bool
 )
 
 var secretCmd = &cobra.Command{
@@ -58,6 +60,20 @@ func init() {
 		os.Getenv(usageRulesEnvVar),
 		"Path to a YAML file containing custom Secret usage rules; defaults to $KUBECTL_PEEK_RULE_FILE",
 	)
+
+	secretCmd.Flags().BoolVar(
+		&secretShowUsage,
+		"show-usage",
+		false,
+		"Discover and display resources that use, produce, or reference the Secret",
+	)
+
+	secretCmd.Flags().BoolVar(
+		&secretShowValues,
+		"show-values",
+		true,
+		"Display decoded Secret values; use --show-values=false to redact them",
+	)
 }
 
 func runSecret(
@@ -74,14 +90,16 @@ func runSecret(
 		return err
 	}
 
-	usageRules, err := config.LoadUsageRules(
-		secretUsageRulesFile,
-	)
-	if err != nil {
-		return err
-	}
+	if secretShowUsage {
+		usageRules, err := config.LoadUsageRules(
+			secretUsageRulesFile,
+		)
+		if err != nil {
+			return err
+		}
 
-	client.UsageRules = usageRules
+		client.UsageRules = usageRules
+	}
 
 	secrets, err := client.Clientset.
 		CoreV1().
@@ -161,23 +179,32 @@ func runSecret(
 		return ui.RenderEmptySecretError(secret.Name)
 	}
 
-	result, err := kubernetes.FindSecretUsagesDetailed(
-		ctx,
-		client,
-		client.Namespace,
-		secret.Name,
-	)
-	if err != nil {
-		return fmt.Errorf(
-			"find secret usages: %w",
-			err,
+	var result kubernetes.SecretUsageResult
+
+	if secretShowUsage {
+		result, err = kubernetes.FindSecretUsagesDetailed(
+			ctx,
+			client,
+			client.Namespace,
+			secret.Name,
 		)
+		if err != nil {
+			return fmt.Errorf(
+				"find secret usages: %w",
+				err,
+			)
+		}
 	}
 
 	fmt.Fprintln(out)
 	fmt.Fprintln(
 		out,
-		ui.RenderSecret(secret, result),
+		ui.RenderSecret(
+			secret,
+			result,
+			secretShowUsage,
+			secretShowValues,
+		),
 	)
 
 	return nil
