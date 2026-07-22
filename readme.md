@@ -88,9 +88,13 @@ kubectl peek secret database -n production
 kubectl peek secret --rules ./examples/rules-all.yaml
 ```
 
-![kubectl-peek Secret inspection](https://github.com/user-attachments/assets/02ec34c5-f82a-443c-a3f1-a03a2c9d5489)
+<img width="1200" height="700" alt="kubectl-peek-demo" src="https://github.com/user-attachments/assets/d7ced034-827d-4b4a-8339-085071608962" />
+
 
 Built-in discovery covers common Kubernetes resources. Declarative YAML rules extend discovery to resources such as External Secrets Operator, cert-manager, Crossplane, Vault operators, Argo CD and internal CRDs.
+
+<img width="1200" height="700" alt="kubectl-peek-demo-part-2" src="https://github.com/user-attachments/assets/adb4af97-b745-4877-9e1a-9e0aaf44cdbe" />
+
 
 [Secret inspection](docs/secrets.md) · [Custom discovery rules](docs/rules.md)
 
