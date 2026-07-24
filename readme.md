@@ -7,7 +7,7 @@
 
 **An interactive Kubernetes troubleshooting and terminal-workflow CLI.**
 
-`kubectl-peek` helps you inspect Secret relationships, investigate Events, enter Pod containers, select namespaces, and work safely across multiple Kubernetes contexts without changing the kubeconfig used by your other terminal sessions.
+`kubectl-peek` helps you inspect Secret relationships, investigate Events, enter Pod containers, select namespaces, and work safely across multiple Kubernetes contexts without changing the kubeconfig used by your other terminal sessions. 
 
 ```text
 kubectl peek
