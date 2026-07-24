@@ -1,23 +1,37 @@
-name: Publish release artifacts
+name: Publish release
 
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+    branches:
+      - main
+
+  workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
 jobs:
-  validate:
-    name: Validate release
+  release:
+    name: Create and publish release
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout validated commit
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && 'main' || github.event.workflow_run.head_sha }}
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -25,44 +39,59 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Check formatting
+      - name: Determine next patch version
+        id: version
+        shell: bash
         run: |
-          files="$(gofmt -l .)"
-          if [ -n "$files" ]; then
-            echo "The following files are not formatted:"
-            echo "$files"
+          set -euo pipefail
+
+          git fetch --force --tags
+
+          latest_tag="$(
+            git tag --list 'v[0-9]*.[0-9]*.[0-9]*' \
+              --sort=-v:refname |
+            head -n 1
+          )"
+
+          if [[ -z "$latest_tag" ]]; then
+            latest_tag="v0.0.0"
+          fi
+
+          version="${latest_tag#v}"
+
+          IFS='.' read -r major minor patch <<< "$version"
+
+          if [[ ! "$major" =~ ^[0-9]+$ ]] ||
+             [[ ! "$minor" =~ ^[0-9]+$ ]] ||
+             [[ ! "$patch" =~ ^[0-9]+$ ]]; then
+            echo "Invalid semantic version tag: $latest_tag"
             exit 1
           fi
 
-      - name: Run tests
-        run: go test -race ./...
+          next_tag="v${major}.${minor}.$((patch + 1))"
 
-      - name: Run vet
-        run: go vet ./...
+          echo "Current version: $latest_tag"
+          echo "Next version: $next_tag"
 
-      - name: Validate GoReleaser
-        uses: goreleaser/goreleaser-action@v7
-        with:
-          version: "~> v2"
-          args: release --snapshot --clean
+          echo "previous_tag=$latest_tag" >> "$GITHUB_OUTPUT"
+          echo "tag=$next_tag" >> "$GITHUB_OUTPUT"
 
-  release:
-    name: Publish release
-    needs:
-      - validate
-    runs-on: ubuntu-latest
+      - name: Create and push tag
+        env:
+          NEXT_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+          if git rev-parse "$NEXT_TAG" >/dev/null 2>&1; then
+            echo "Tag $NEXT_TAG already exists"
+            exit 1
+          fi
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git tag -a "$NEXT_TAG" -m "Release $NEXT_TAG"
+          git push origin "$NEXT_TAG"
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v7
