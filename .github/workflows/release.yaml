@@ -1,13 +1,11 @@
 name: Publish release
 
 on:
-  workflow_run:
-    workflows:
-      - CI
-    types:
-      - completed
+  pull_request:
     branches:
       - main
+    types:
+      - closed
 
   workflow_dispatch:
 
