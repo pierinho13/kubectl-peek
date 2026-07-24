@@ -59,7 +59,6 @@ jobs:
         with:
           version: "~> v2"
           args: release --snapshot --clean
-
   release:
     name: Create and publish release
     needs:
@@ -72,6 +71,7 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event_name == 'workflow_dispatch' && 'main' || github.event.workflow_run.head_sha }}
+          token: ${{ secrets.RELEASE_TOKEN }}
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -100,18 +100,10 @@ jobs:
           version="${latest_tag#v}"
           IFS='.' read -r major minor patch <<< "$version"
 
-          if [[ ! "$major" =~ ^[0-9]+$ ]] ||
-             [[ ! "$minor" =~ ^[0-9]+$ ]] ||
-             [[ ! "$patch" =~ ^[0-9]+$ ]]; then
-            echo "Invalid semantic version tag: $latest_tag"
-            exit 1
-          fi
-
           next_tag="v${major}.${minor}.$((patch + 1))"
 
           echo "Current version: $latest_tag"
           echo "Next version: $next_tag"
-
           echo "tag=$next_tag" >> "$GITHUB_OUTPUT"
 
       - name: Create and push tag
@@ -132,5 +124,5 @@ jobs:
           version: "~> v2"
           args: release --clean
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
