@@ -24,6 +24,8 @@ kubectl peek
 - Supports macOS, Linux and Windows
 - Works as both `kubectl-peek` and the native `kubectl peek` plugin
 
+⭐ Drop a star to support kubectl-peek ⭐
+
 ## Why kubectl-peek?
 
 Everyday Kubernetes troubleshooting often requires several disconnected commands: changing contexts, selecting namespaces, finding Pods and containers, reading repetitive Events, inspecting Secrets, and tracing the resources that use them.
@@ -37,8 +39,6 @@ Everyday Kubernetes troubleshooting often requires several disconnected commands
 | Secrets | Decode a Secret and discover who uses or produces it | `kubectl peek secret` |
 | Pod access | Select the correct Pod and container interactively | `kubectl peek exec` |
 | Namespace | Select a namespace and either persist it or open an isolated shell within it | `kubectl peek namespace` |
-
-⭐ Drop a star to support kubectl-peek ⭐
 
 ## Isolated Kubernetes shells
 
