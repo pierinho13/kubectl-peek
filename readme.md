@@ -5,6 +5,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/pierinho13/kubectl-peek)](https://goreportcard.com/report/github.com/pierinho13/kubectl-peek)
 [![License](https://img.shields.io/github/license/pierinho13/kubectl-peek)](LICENSE)
 
+                                                         
 **An interactive Kubernetes troubleshooting and terminal-workflow CLI.**
 
 `kubectl-peek` helps you inspect Secret relationships, investigate Events, enter Pod containers, select namespaces, and work safely across multiple Kubernetes contexts without changing the kubeconfig used by your other terminal sessions. 
@@ -24,7 +25,7 @@ kubectl peek
 - Supports macOS, Linux and Windows
 - Works as both `kubectl-peek` and the native `kubectl peek` plugin
 
-⭐ Drop a star to support kubectl-peek ⭐
+##### ⭐ Drop a star to support kubectl-peek ⭐
 
 ## Why kubectl-peek?
 
