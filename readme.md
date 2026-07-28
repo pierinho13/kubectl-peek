@@ -90,6 +90,14 @@ A namespace-first isolated shell is also available:
 kubectl peek namespace --shell
 ```
 
+When already inside an active isolated shell, run the same command to switch only the namespace in place. The current context is preserved and no additional shell is created:
+
+```text
+[k8s:staging ns:ci] user@host %
+kubectl peek namespace --shell
+[k8s:staging ns:devbox-sre-3] user@host %
+```
+
 ![kubectl-peek namespace shell](https://github.com/user-attachments/assets/fae7e6dd-1a36-491b-a4fe-0cbe5eaed4ee)
 
 [Full shell and namespace documentation](docs/shells-and-namespaces.md)
