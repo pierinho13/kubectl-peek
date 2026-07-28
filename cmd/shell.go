@@ -42,9 +42,7 @@ func runShell(
 	out io.Writer,
 ) error {
 
-	if err := kubernetes.EnsureNoActiveNamespaceShell(); err != nil {
-		return err
-	}
+	activeShell := kubernetes.IsNamespaceShellActive()
 
 	selectedContext := contextName
 
@@ -120,6 +118,15 @@ func runShell(
 		if err != nil {
 			return err
 		}
+	}
+
+	if activeShell {
+		return kubernetes.SwitchNamespaceShell(
+			kubeconfig,
+			selectedContext,
+			selectedNamespace,
+			out,
+		)
 	}
 
 	return kubernetes.RunNamespaceShell(
