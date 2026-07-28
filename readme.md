@@ -5,10 +5,9 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/pierinho13/kubectl-peek)](https://goreportcard.com/report/github.com/pierinho13/kubectl-peek)
 [![License](https://img.shields.io/github/license/pierinho13/kubectl-peek)](LICENSE)
 
-                                                         
 **An interactive Kubernetes troubleshooting and terminal-workflow CLI.**
 
-`kubectl-peek` helps you inspect Secret relationships, investigate Events, enter Pod containers, select namespaces, and work safely across multiple Kubernetes contexts without changing the kubeconfig used by your other terminal sessions. 
+`kubectl-peek` helps you inspect Secret relationships, investigate Events, enter Pod containers, select namespaces, and work safely across multiple Kubernetes contexts without changing the kubeconfig used by your other terminal sessions.
 
 ```text
 kubectl peek
@@ -22,7 +21,7 @@ kubectl peek
 - Client-side only
 - Uses your existing kubeconfig and Kubernetes permissions
 - Installs no controller, agent, CRD or web interface
-- Supports macOS, Linux and Windows
+- Supports macOS and Linux for isolated shell workflows
 - Works as both `kubectl-peek` and the native `kubectl peek` plugin
 
 ##### ⭐ Drop a star to support kubectl-peek ⭐
@@ -57,7 +56,21 @@ Each child shell receives a temporary flattened kubeconfig through `KUBECONFIG`.
 [k8s:production ns:payments] user@host %
 ```
 
-Tools such as `kubectl`, `helm` and `flux` use the isolated scope only inside that shell. Temporary files are removed after `exit`.
+Run `kubectl peek shell` again from inside an active isolated shell to select another context and namespace without leaving or nesting a second shell:
+
+```bash
+kubectl peek shell
+```
+
+```text
+[k8s:staging ns:devbox-sre-3] user@host %
+kubectl peek shell
+[k8s:production ns:payments] user@host %
+```
+
+Context switches create a validated temporary generation and activate it atomically. The `KUBECONFIG` path remains stable for the lifetime of the shell, while tools such as `kubectl`, `helm` and `flux` immediately use the newly selected scope.
+
+Temporary files are removed after `exit`.
 
 [Full shell and namespace documentation](docs/shells-and-namespaces.md)
 
@@ -94,7 +107,6 @@ kubectl peek secret --rules ./examples/rules-all.yaml
 Built-in discovery covers common Kubernetes resources. Declarative YAML rules extend discovery to resources such as External Secrets Operator, cert-manager, Crossplane, Vault operators, Argo CD and internal CRDs.
 
 <img width="1200" height="700" alt="kubectl-peek-demo-part-2" src="https://github.com/user-attachments/assets/adb4af97-b745-4877-9e1a-9e0aaf44cdbe" />
-
 
 [Secret inspection](docs/secrets.md) · [Custom discovery rules](docs/rules.md)
 
@@ -224,13 +236,15 @@ Ctrl+C    Cancel
 
 Secret values are decoded and printed to the terminal. They may remain visible in terminal scrollback, recordings, screen sharing, screenshots or captured output. Use Secret inspection only in trusted environments.
 
-Temporary kubeconfigs created for isolated shells:
+Temporary kubeconfig generations created for isolated shells:
 
 - contain the effective Kubernetes configuration;
 - preserve authentication and exec plugins;
 - embed referenced certificate and key data;
 - are created with `0600` permissions;
-- are exposed only to the child shell;
+- are exposed only to the active isolated shell session;
+- are validated before being activated;
+- switch atomically together with their context and namespace state;
 - are removed after the shell exits normally;
 - do not modify the original kubeconfig.
 

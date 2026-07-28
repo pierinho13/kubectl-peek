@@ -8,12 +8,29 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"unicode"
 
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
-const namespaceShellEnvironment = "KUBECTL_PEEK_SHELL"
+const (
+	namespaceShellEnvironment        = "KUBECTL_PEEK_SHELL"
+	namespaceShellSessionEnvironment = "KUBECTL_PEEK_SESSION_DIR"
+
+	namespaceShellDirectoryPrefix = "kubectl-peek-namespace-"
+	namespaceShellMarkerFile      = ".kubectl-peek-session"
+	namespaceShellMarkerContent   = "kubectl-peek namespace shell\n"
+
+	namespaceShellGenerationsDirectory = "generations"
+	namespaceShellCurrentLink          = "current"
+
+	namespaceShellKubeconfigFile      = "kubeconfig"
+	namespaceShellContextFile         = "context"
+	namespaceShellNamespaceFile       = "namespace"
+	namespaceShellPromptContextFile   = "prompt-context"
+	namespaceShellPromptNamespaceFile = "prompt-namespace"
+)
 
 const (
 	ansiBold   = "\033[1m"
@@ -29,30 +46,22 @@ func RunNamespaceShell(
 	namespace string,
 	out io.Writer,
 ) error {
-	if os.Getenv(namespaceShellEnvironment) != "" {
-		return fmt.Errorf(
-			"a kubectl-peek namespace shell is already active; run exit before opening another one",
-		)
+	if err := EnsureNoActiveNamespaceShell(); err != nil {
+		return err
 	}
 
-	temporaryDirectory, err := os.MkdirTemp(
-		"",
-		"kubectl-peek-namespace-*",
-	)
+	sessionDirectory, err := createNamespaceShellSessionDirectory()
 	if err != nil {
-		return fmt.Errorf(
-			"create temporary namespace directory: %w",
-			err,
-		)
+		return err
 	}
-	defer os.RemoveAll(temporaryDirectory)
+	defer os.RemoveAll(sessionDirectory)
 
 	temporaryKubeconfig, targetContext, err :=
-		createTemporaryNamespaceKubeconfig(
+		activateNamespaceShellGeneration(
 			kubeconfig,
 			contextName,
 			namespace,
-			temporaryDirectory,
+			sessionDirectory,
 		)
 	if err != nil {
 		return err
@@ -65,7 +74,7 @@ func RunNamespaceShell(
 
 	command, environment, err := namespaceShellCommand(
 		shellPath,
-		temporaryDirectory,
+		sessionDirectory,
 		targetContext,
 		namespace,
 		temporaryKubeconfig,
@@ -74,42 +83,13 @@ func RunNamespaceShell(
 		return err
 	}
 
-	fmt.Fprintln(out)
-	fmt.Fprintf(
+	renderNamespaceShellStatus(
 		out,
-		"%s%s┌─ kubectl-peek namespace shell%s\n",
-		ansiBold,
-		ansiCyan,
-		ansiReset,
-	)
-	fmt.Fprintf(
-		out,
-		"%s│%s Context    %s%s%s\n",
-		ansiCyan,
-		ansiReset,
-		ansiBold,
+		"kubectl-peek namespace shell",
 		targetContext,
-		ansiReset,
-	)
-	fmt.Fprintf(
-		out,
-		"%s│%s Namespace  %s%s%s%s\n",
-		ansiCyan,
-		ansiReset,
-		ansiBold,
-		ansiYellow,
 		namespace,
-		ansiReset,
+		"Type `exit` to return to the previous shell",
 	)
-	fmt.Fprintf(
-		out,
-		"%s└─%s %sType `exit` to return to the previous shell%s\n",
-		ansiCyan,
-		ansiReset,
-		ansiDim,
-		ansiReset,
-	)
-	fmt.Fprintln(out)
 
 	command.Env = environment
 	command.Stdin = os.Stdin
@@ -127,17 +107,323 @@ func RunNamespaceShell(
 	return nil
 }
 
-func createTemporaryNamespaceKubeconfig(
+func SwitchNamespaceShell(
 	kubeconfig string,
 	contextName string,
 	namespace string,
-	temporaryDirectory string,
+	out io.Writer,
+) error {
+	if !IsNamespaceShellActive() {
+		return fmt.Errorf(
+			"no active kubectl-peek namespace shell was found",
+		)
+	}
+
+	sessionDirectory, err := activeNamespaceShellSessionDirectory()
+	if err != nil {
+		return err
+	}
+
+	_, targetContext, err := activateNamespaceShellGeneration(
+		kubeconfig,
+		contextName,
+		namespace,
+		sessionDirectory,
+	)
+	if err != nil {
+		return err
+	}
+
+	renderNamespaceShellStatus(
+		out,
+		"kubectl-peek namespace shell switched",
+		targetContext,
+		namespace,
+		"Continue working in the current shell",
+	)
+
+	return nil
+}
+
+func IsNamespaceShellActive() bool {
+	return os.Getenv(namespaceShellEnvironment) != ""
+}
+
+func createNamespaceShellSessionDirectory() (string, error) {
+	sessionDirectory, err := os.MkdirTemp(
+		"",
+		namespaceShellDirectoryPrefix+"*",
+	)
+	if err != nil {
+		return "", fmt.Errorf(
+			"create temporary namespace directory: %w",
+			err,
+		)
+	}
+
+	cleanup := true
+	defer func() {
+		if cleanup {
+			_ = os.RemoveAll(sessionDirectory)
+		}
+	}()
+
+	markerPath := filepath.Join(
+		sessionDirectory,
+		namespaceShellMarkerFile,
+	)
+
+	if err := os.WriteFile(
+		markerPath,
+		[]byte(namespaceShellMarkerContent),
+		0o600,
+	); err != nil {
+		return "", fmt.Errorf(
+			"write namespace shell session marker: %w",
+			err,
+		)
+	}
+
+	cleanup = false
+	return sessionDirectory, nil
+}
+
+func activeNamespaceShellSessionDirectory() (string, error) {
+	rawSessionDirectory := strings.TrimSpace(
+		os.Getenv(namespaceShellSessionEnvironment),
+	)
+	if rawSessionDirectory == "" {
+		return "", fmt.Errorf(
+			"active kubectl-peek shell has no session directory",
+		)
+	}
+
+	sessionDirectory, err := filepath.Abs(rawSessionDirectory)
+	if err != nil {
+		return "", fmt.Errorf(
+			"resolve namespace shell session directory: %w",
+			err,
+		)
+	}
+
+	resolvedSessionDirectory, err := filepath.EvalSymlinks(
+		sessionDirectory,
+	)
+	if err != nil {
+		return "", fmt.Errorf(
+			"resolve namespace shell session directory %q: %w",
+			sessionDirectory,
+			err,
+		)
+	}
+
+	temporaryDirectory, err := filepath.Abs(os.TempDir())
+	if err != nil {
+		return "", fmt.Errorf(
+			"resolve operating system temporary directory: %w",
+			err,
+		)
+	}
+
+	resolvedTemporaryDirectory, err := filepath.EvalSymlinks(
+		temporaryDirectory,
+	)
+	if err != nil {
+		return "", fmt.Errorf(
+			"resolve operating system temporary directory: %w",
+			err,
+		)
+	}
+
+	if filepath.Dir(resolvedSessionDirectory) !=
+		resolvedTemporaryDirectory ||
+		!strings.HasPrefix(
+			filepath.Base(resolvedSessionDirectory),
+			namespaceShellDirectoryPrefix,
+		) {
+		return "", fmt.Errorf(
+			"invalid kubectl-peek shell session directory %q",
+			sessionDirectory,
+		)
+	}
+
+	info, err := os.Stat(resolvedSessionDirectory)
+	if err != nil {
+		return "", fmt.Errorf(
+			"inspect namespace shell session directory: %w",
+			err,
+		)
+	}
+
+	if !info.IsDir() {
+		return "", fmt.Errorf(
+			"namespace shell session path %q is not a directory",
+			resolvedSessionDirectory,
+		)
+	}
+
+	markerPath := filepath.Join(
+		resolvedSessionDirectory,
+		namespaceShellMarkerFile,
+	)
+
+	marker, err := os.ReadFile(markerPath)
+	if err != nil {
+		return "", fmt.Errorf(
+			"read namespace shell session marker: %w",
+			err,
+		)
+	}
+
+	if string(marker) != namespaceShellMarkerContent {
+		return "", fmt.Errorf(
+			"invalid namespace shell session marker in %q",
+			resolvedSessionDirectory,
+		)
+	}
+
+	return resolvedSessionDirectory, nil
+}
+
+func activateNamespaceShellGeneration(
+	kubeconfig string,
+	contextName string,
+	namespace string,
+	sessionDirectory string,
 ) (string, string, error) {
+	temporaryConfig, targetContext, err :=
+		temporaryNamespaceConfig(
+			kubeconfig,
+			contextName,
+			namespace,
+		)
+	if err != nil {
+		return "", "", err
+	}
+
+	generationsDirectory := filepath.Join(
+		sessionDirectory,
+		namespaceShellGenerationsDirectory,
+	)
+
+	if err := os.MkdirAll(
+		generationsDirectory,
+		0o700,
+	); err != nil {
+		return "", "", fmt.Errorf(
+			"create namespace shell generations directory: %w",
+			err,
+		)
+	}
+
+	generationDirectory, err := os.MkdirTemp(
+		generationsDirectory,
+		"generation-*",
+	)
+	if err != nil {
+		return "", "", fmt.Errorf(
+			"create namespace shell generation: %w",
+			err,
+		)
+	}
+
+	activated := false
+	defer func() {
+		if !activated {
+			_ = os.RemoveAll(generationDirectory)
+		}
+	}()
+
+	kubeconfigPath := filepath.Join(
+		generationDirectory,
+		namespaceShellKubeconfigFile,
+	)
+
+	if err := writeNamespaceShellKubeconfig(
+		kubeconfigPath,
+		temporaryConfig,
+		targetContext,
+		namespace,
+	); err != nil {
+		return "", "", err
+	}
+
+	stateFiles := map[string]string{
+		namespaceShellContextFile:         targetContext,
+		namespaceShellNamespaceFile:       namespace,
+		namespaceShellPromptContextFile:   sanitizePromptValue(targetContext),
+		namespaceShellPromptNamespaceFile: sanitizePromptValue(namespace),
+	}
+
+	for name, value := range stateFiles {
+		if err := writeNamespaceShellStateValue(
+			filepath.Join(generationDirectory, name),
+			value,
+		); err != nil {
+			return "", "", err
+		}
+	}
+
+	relativeGeneration, err := filepath.Rel(
+		sessionDirectory,
+		generationDirectory,
+	)
+	if err != nil {
+		return "", "", fmt.Errorf(
+			"resolve namespace shell generation link target: %w",
+			err,
+		)
+	}
+
+	nextLink := filepath.Join(
+		sessionDirectory,
+		".current-"+filepath.Base(generationDirectory),
+	)
+	defer os.Remove(nextLink)
+
+	if err := os.Symlink(
+		relativeGeneration,
+		nextLink,
+	); err != nil {
+		return "", "", fmt.Errorf(
+			"create namespace shell generation link: %w",
+			err,
+		)
+	}
+
+	currentLink := filepath.Join(
+		sessionDirectory,
+		namespaceShellCurrentLink,
+	)
+
+	if err := os.Rename(
+		nextLink,
+		currentLink,
+	); err != nil {
+		return "", "", fmt.Errorf(
+			"activate namespace shell generation: %w",
+			err,
+		)
+	}
+
+	activated = true
+
+	return filepath.Join(
+		currentLink,
+		namespaceShellKubeconfigFile,
+	), targetContext, nil
+}
+
+func temporaryNamespaceConfig(
+	kubeconfig string,
+	contextName string,
+	namespace string,
+) (*clientcmdapi.Config, string, error) {
 	loadingRules := newLoadingRules(kubeconfig)
 
 	config, err := loadingRules.Load()
 	if err != nil {
-		return "", "", fmt.Errorf(
+		return nil, "", fmt.Errorf(
 			"load Kubernetes configuration: %w",
 			err,
 		)
@@ -149,7 +435,7 @@ func createTemporaryNamespaceKubeconfig(
 		contextName,
 	)
 	if err != nil {
-		return "", "", err
+		return nil, "", err
 	}
 
 	// Work on a copy. The user's source kubeconfig is never modified.
@@ -166,30 +452,149 @@ func createTemporaryNamespaceKubeconfig(
 	// kubeconfig. This preserves complex merged kubeconfigs even when their
 	// original files contain relative paths.
 	if err := clientcmdapi.FlattenConfig(temporaryConfig); err != nil {
-		return "", "", fmt.Errorf(
+		return nil, "", fmt.Errorf(
 			"flatten temporary Kubernetes configuration: %w",
 			err,
 		)
 	}
 
-	data, err := clientcmd.Write(*temporaryConfig)
+	return temporaryConfig, targetContext, nil
+}
+
+func writeNamespaceShellKubeconfig(
+	path string,
+	config *clientcmdapi.Config,
+	targetContext string,
+	namespace string,
+) error {
+	data, err := clientcmd.Write(*config)
 	if err != nil {
-		return "", "", fmt.Errorf(
+		return fmt.Errorf(
 			"encode temporary Kubernetes configuration: %w",
 			err,
 		)
 	}
 
-	path := filepath.Join(
-		temporaryDirectory,
-		"kubeconfig",
-	)
-
 	if err := os.WriteFile(path, data, 0o600); err != nil {
-		return "", "", fmt.Errorf(
+		return fmt.Errorf(
 			"write temporary Kubernetes configuration: %w",
 			err,
 		)
+	}
+
+	loaded, err := clientcmd.LoadFromFile(path)
+	if err != nil {
+		return fmt.Errorf(
+			"validate temporary Kubernetes configuration: %w",
+			err,
+		)
+	}
+
+	if loaded.CurrentContext != targetContext {
+		return fmt.Errorf(
+			"temporary Kubernetes configuration uses context %q, expected %q",
+			loaded.CurrentContext,
+			targetContext,
+		)
+	}
+
+	context, found := loaded.Contexts[targetContext]
+	if !found || context == nil {
+		return fmt.Errorf(
+			"temporary Kubernetes configuration does not contain context %q",
+			targetContext,
+		)
+	}
+
+	if context.Namespace != namespace {
+		return fmt.Errorf(
+			"temporary Kubernetes configuration uses namespace %q, expected %q",
+			context.Namespace,
+			namespace,
+		)
+	}
+
+	return nil
+}
+
+func writeNamespaceShellStateValue(
+	path string,
+	value string,
+) error {
+	if value == "" {
+		return fmt.Errorf(
+			"namespace shell state value for %q is empty",
+			filepath.Base(path),
+		)
+	}
+
+	if strings.ContainsAny(value, "\r\n\x00") {
+		return fmt.Errorf(
+			"namespace shell state value for %q contains unsupported characters",
+			filepath.Base(path),
+		)
+	}
+
+	if err := os.WriteFile(
+		path,
+		[]byte(value+"\n"),
+		0o600,
+	); err != nil {
+		return fmt.Errorf(
+			"write namespace shell state %q: %w",
+			filepath.Base(path),
+			err,
+		)
+	}
+
+	return nil
+}
+
+func sanitizePromptValue(value string) string {
+	var builder strings.Builder
+
+	for _, character := range value {
+		if unicode.IsLetter(character) ||
+			unicode.IsNumber(character) ||
+			strings.ContainsRune("._-:/@", character) {
+			builder.WriteRune(character)
+			continue
+		}
+
+		builder.WriteRune('?')
+	}
+
+	return builder.String()
+}
+
+func createTemporaryNamespaceKubeconfig(
+	kubeconfig string,
+	contextName string,
+	namespace string,
+	temporaryDirectory string,
+) (string, string, error) {
+	temporaryConfig, targetContext, err :=
+		temporaryNamespaceConfig(
+			kubeconfig,
+			contextName,
+			namespace,
+		)
+	if err != nil {
+		return "", "", err
+	}
+
+	path := filepath.Join(
+		temporaryDirectory,
+		namespaceShellKubeconfigFile,
+	)
+
+	if err := writeNamespaceShellKubeconfig(
+		path,
+		temporaryConfig,
+		targetContext,
+		namespace,
+	); err != nil {
+		return "", "", err
 	}
 
 	return path, targetContext, nil
@@ -249,7 +654,7 @@ func resolveInteractiveShell() (string, error) {
 
 func namespaceShellCommand(
 	shellPath string,
-	temporaryDirectory string,
+	sessionDirectory string,
 	contextName string,
 	namespace string,
 	temporaryKubeconfig string,
@@ -271,6 +676,11 @@ func namespaceShellCommand(
 	)
 	environment = setEnvironmentValue(
 		environment,
+		namespaceShellSessionEnvironment,
+		sessionDirectory,
+	)
+	environment = setEnvironmentValue(
+		environment,
 		"KUBECTL_PEEK_CONTEXT",
 		contextName,
 	)
@@ -284,9 +694,7 @@ func namespaceShellCommand(
 	case "zsh":
 		command, updatedEnvironment, err := zshNamespaceShell(
 			shellPath,
-			temporaryDirectory,
-			contextName,
-			namespace,
+			sessionDirectory,
 			environment,
 		)
 		return command, updatedEnvironment, err
@@ -294,9 +702,7 @@ func namespaceShellCommand(
 	case "bash":
 		command, err := bashNamespaceShell(
 			shellPath,
-			temporaryDirectory,
-			contextName,
-			namespace,
+			sessionDirectory,
 		)
 		return command, environment, err
 
@@ -307,9 +713,7 @@ func namespaceShellCommand(
 
 func zshNamespaceShell(
 	shellPath string,
-	temporaryDirectory string,
-	contextName string,
-	namespace string,
+	sessionDirectory string,
 	environment []string,
 ) (*exec.Cmd, []string, error) {
 	originalZDOTDIR := os.Getenv("ZDOTDIR")
@@ -327,7 +731,7 @@ func zshNamespaceShell(
 	}
 
 	zshDirectory := filepath.Join(
-		temporaryDirectory,
+		sessionDirectory,
 		"zsh",
 	)
 
@@ -353,12 +757,38 @@ func zshNamespaceShell(
 		)
 	}
 
-	fmt.Fprintf(
-		&configuration,
-		"PROMPT='%%B%%F{cyan}[k8s:%s %%F{yellow}ns:%s%%F{cyan}]%%f%%b '\"$PROMPT\"\n",
-		contextName,
-		namespace,
-	)
+	configuration.WriteString(`
+typeset -g KUBECTL_PEEK_BASE_PROMPT="$PROMPT"
+
+_kubectl_peek_refresh_prompt() {
+  local context namespace prompt_context prompt_namespace
+
+  if ! IFS= read -r context < "$KUBECTL_PEEK_SESSION_DIR/current/context"; then
+    context="?"
+  fi
+
+  if ! IFS= read -r namespace < "$KUBECTL_PEEK_SESSION_DIR/current/namespace"; then
+    namespace="?"
+  fi
+
+  if ! IFS= read -r prompt_context < "$KUBECTL_PEEK_SESSION_DIR/current/prompt-context"; then
+    prompt_context="?"
+  fi
+
+  if ! IFS= read -r prompt_namespace < "$KUBECTL_PEEK_SESSION_DIR/current/prompt-namespace"; then
+    prompt_namespace="?"
+  fi
+
+  export KUBECTL_PEEK_CONTEXT="$context"
+  export KUBECTL_PEEK_NAMESPACE="$namespace"
+
+  PROMPT="%B%F{cyan}[k8s:${prompt_context} %F{yellow}ns:${prompt_namespace}%F{cyan}]%f%b ${KUBECTL_PEEK_BASE_PROMPT}"
+}
+
+autoload -Uz add-zsh-hook
+add-zsh-hook precmd _kubectl_peek_refresh_prompt
+_kubectl_peek_refresh_prompt
+`)
 
 	zshrc := filepath.Join(zshDirectory, ".zshrc")
 
@@ -384,12 +814,10 @@ func zshNamespaceShell(
 
 func bashNamespaceShell(
 	shellPath string,
-	temporaryDirectory string,
-	contextName string,
-	namespace string,
+	sessionDirectory string,
 ) (*exec.Cmd, error) {
 	bashrc := filepath.Join(
-		temporaryDirectory,
+		sessionDirectory,
 		"bashrc",
 	)
 
@@ -416,12 +844,48 @@ func bashNamespaceShell(
 		)
 	}
 
-	fmt.Fprintf(
-		&configuration,
-		"PS1='\\[\\033[1;36m\\][k8s:%s \\[\\033[1;33m\\]ns:%s\\[\\033[1;36m\\]]\\[\\033[0m\\] '\"$PS1\"\n",
-		contextName,
-		namespace,
-	)
+	configuration.WriteString(`
+KUBECTL_PEEK_BASE_PS1="$PS1"
+
+_kubectl_peek_refresh_prompt() {
+  local context namespace prompt_context prompt_namespace
+
+  if ! IFS= read -r context < "$KUBECTL_PEEK_SESSION_DIR/current/context"; then
+    context="?"
+  fi
+
+  if ! IFS= read -r namespace < "$KUBECTL_PEEK_SESSION_DIR/current/namespace"; then
+    namespace="?"
+  fi
+
+  if ! IFS= read -r prompt_context < "$KUBECTL_PEEK_SESSION_DIR/current/prompt-context"; then
+    prompt_context="?"
+  fi
+
+  if ! IFS= read -r prompt_namespace < "$KUBECTL_PEEK_SESSION_DIR/current/prompt-namespace"; then
+    prompt_namespace="?"
+  fi
+
+  export KUBECTL_PEEK_CONTEXT="$context"
+  export KUBECTL_PEEK_NAMESPACE="$namespace"
+
+  PS1="\[\033[1;36m\][k8s:${prompt_context} \[\033[1;33m\]ns:${prompt_namespace}\[\033[1;36m\]]\[\033[0m\] ${KUBECTL_PEEK_BASE_PS1}"
+}
+
+if declare -p PROMPT_COMMAND 2>/dev/null | command grep -q '^declare -a'; then
+  PROMPT_COMMAND+=(_kubectl_peek_refresh_prompt)
+else
+  KUBECTL_PEEK_ORIGINAL_PROMPT_COMMAND="${PROMPT_COMMAND-}"
+
+  if [[ -n "$KUBECTL_PEEK_ORIGINAL_PROMPT_COMMAND" ]]; then
+    PROMPT_COMMAND="${KUBECTL_PEEK_ORIGINAL_PROMPT_COMMAND};_kubectl_peek_refresh_prompt"
+  else
+    PROMPT_COMMAND="_kubectl_peek_refresh_prompt"
+  fi
+fi
+
+_kubectl_peek_refresh_prompt
+`)
 
 	if err := os.WriteFile(
 		bashrc,
@@ -440,6 +904,110 @@ func bashNamespaceShell(
 		bashrc,
 		"-i",
 	), nil
+}
+
+func renderNamespaceShellStatus(
+	out io.Writer,
+	title string,
+	contextName string,
+	namespace string,
+	footer string,
+) {
+	fmt.Fprintln(out)
+	fmt.Fprintf(
+		out,
+		"%s%s┌─ %s%s\n",
+		ansiBold,
+		ansiCyan,
+		title,
+		ansiReset,
+	)
+	fmt.Fprintf(
+		out,
+		"%s│%s Context    %s%s%s\n",
+		ansiCyan,
+		ansiReset,
+		ansiBold,
+		contextName,
+		ansiReset,
+	)
+	fmt.Fprintf(
+		out,
+		"%s│%s Namespace  %s%s%s%s\n",
+		ansiCyan,
+		ansiReset,
+		ansiBold,
+		ansiYellow,
+		namespace,
+		ansiReset,
+	)
+	fmt.Fprintf(
+		out,
+		"%s└─%s %s%s%s\n",
+		ansiCyan,
+		ansiReset,
+		ansiDim,
+		footer,
+		ansiReset,
+	)
+	fmt.Fprintln(out)
+}
+
+func readNamespaceShellState(
+	sessionDirectory string,
+) (string, string, error) {
+	currentDirectory := filepath.Join(
+		sessionDirectory,
+		namespaceShellCurrentLink,
+	)
+
+	contextName, err := readNamespaceShellStateValue(
+		filepath.Join(
+			currentDirectory,
+			namespaceShellContextFile,
+		),
+	)
+	if err != nil {
+		return "", "", err
+	}
+
+	namespace, err := readNamespaceShellStateValue(
+		filepath.Join(
+			currentDirectory,
+			namespaceShellNamespaceFile,
+		),
+	)
+	if err != nil {
+		return "", "", err
+	}
+
+	return contextName, namespace, nil
+}
+
+func readNamespaceShellStateValue(
+	path string,
+) (string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf(
+			"read namespace shell state %q: %w",
+			filepath.Base(path),
+			err,
+		)
+	}
+
+	value := strings.TrimSuffix(
+		strings.TrimSuffix(string(data), "\n"),
+		"\r",
+	)
+	if value == "" {
+		return "", fmt.Errorf(
+			"namespace shell state %q is empty",
+			filepath.Base(path),
+		)
+	}
+
+	return value, nil
 }
 
 func setEnvironmentValue(
