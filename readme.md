@@ -38,6 +38,8 @@ Everyday Kubernetes troubleshooting often requires several disconnected commands
 | Pod access | Select the correct Pod and container interactively | `kubectl peek exec` |
 | Namespace | Select a namespace and either persist it or open an isolated shell within it | `kubectl peek namespace` |
 
+⭐ Drop a star to support kubectl-peek ⭐
+
 ## Isolated Kubernetes shells
 
 Open independent terminal sessions for different clusters and namespaces without modifying the original kubeconfig:
