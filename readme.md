@@ -160,8 +160,7 @@ kubectl peek exec api --container application --shell /bin/sh
 ### Homebrew
 
 ```bash
-brew tap pierinho13/tools
-brew install --cask kubectl-peek
+brew install --cask pierinho13/tools/kubectl-peek
 ```
 
 Upgrade:
