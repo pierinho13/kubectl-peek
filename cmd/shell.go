@@ -9,6 +9,7 @@ import (
 	"github.com/pierinho13/kubectl-peek/internal/ui"
 
 	"github.com/spf13/cobra"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -79,7 +80,7 @@ func runShell(
 				selectedNamespace,
 				metav1.GetOptions{},
 			)
-		if err != nil {
+		if err != nil && !apierrors.IsForbidden(err) {
 			return fmt.Errorf(
 				"get namespace %q from context %q: %w",
 				selectedNamespace,
