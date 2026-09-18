@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"sort"
 
 	"github.com/pierinho13/kubectl-peek/internal/kubernetes"
 	"github.com/pierinho13/kubectl-peek/internal/ui"
 
 	"github.com/spf13/cobra"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -22,6 +22,7 @@ var shellCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runShell(
 			cmd.Context(),
+			cmd.InOrStdin(),
 			cmd.OutOrStdout(),
 		)
 	},
@@ -39,6 +40,7 @@ func init() {
 
 func runShell(
 	ctx context.Context,
+	in io.Reader,
 	out io.Writer,
 ) error {
 
@@ -78,7 +80,7 @@ func runShell(
 				selectedNamespace,
 				metav1.GetOptions{},
 			)
-		if err != nil {
+		if err != nil && !apierrors.IsForbidden(err) {
 			return fmt.Errorf(
 				"get namespace %q from context %q: %w",
 				selectedNamespace,
@@ -87,34 +89,13 @@ func runShell(
 			)
 		}
 	} else {
-		namespaceList, err := client.Clientset.
-			CoreV1().
-			Namespaces().
-			List(ctx, metav1.ListOptions{})
-		if err != nil {
-			return fmt.Errorf(
-				"list namespaces from context %q: %w",
-				selectedContext,
-				err,
-			)
-		}
-
-		namespaces := make(
-			[]string,
-			0,
-			len(namespaceList.Items),
+		selectedNamespace, err = resolveNamespace(
+			ctx,
+			client,
+			in,
+			out,
+			"",
 		)
-
-		for _, item := range namespaceList.Items {
-			namespaces = append(
-				namespaces,
-				item.Name,
-			)
-		}
-
-		sort.Strings(namespaces)
-
-		selectedNamespace, err = ui.SelectNamespace(namespaces)
 		if err != nil {
 			return err
 		}

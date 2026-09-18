@@ -68,53 +68,15 @@ func runNamespace(
 		return err
 	}
 
-	namespaceList, err := client.Clientset.
-		CoreV1().
-		Namespaces().
-		List(ctx, metav1.ListOptions{})
-
-	var selectedNamespace string
-
+	selectedNamespace, err := resolveNamespace(
+		ctx,
+		client,
+		in,
+		out,
+		pattern,
+	)
 	if err != nil {
-		if !apierrors.IsForbidden(err) {
-			return fmt.Errorf("list namespaces: %w", err)
-		}
-
-		selectedNamespace, err = promptNamespace(in, out)
-		if err != nil {
-			return err
-		}
-	} else {
-		namespaces := make([]string, 0, len(namespaceList.Items))
-		normalizedPattern := strings.ToLower(pattern)
-
-		for _, item := range namespaceList.Items {
-			if pattern == "" ||
-				strings.Contains(
-					strings.ToLower(item.Name),
-					normalizedPattern,
-				) {
-				namespaces = append(namespaces, item.Name)
-			}
-		}
-
-		if len(namespaces) == 0 {
-			if pattern != "" {
-				return fmt.Errorf(
-					"no namespaces matching %q found",
-					pattern,
-				)
-			}
-
-			return fmt.Errorf("no namespaces found")
-		}
-
-		sort.Strings(namespaces)
-
-		selectedNamespace, err = ui.SelectNamespace(namespaces)
-		if err != nil {
-			return err
-		}
+		return err
 	}
 
 	if openShell {
@@ -152,6 +114,54 @@ func runNamespace(
 	)
 
 	return nil
+}
+
+func resolveNamespace(
+	ctx context.Context,
+	client *kubernetes.Client,
+	in io.Reader,
+	out io.Writer,
+	pattern string,
+) (string, error) {
+	namespaceList, err := client.Clientset.
+		CoreV1().
+		Namespaces().
+		List(ctx, metav1.ListOptions{})
+	if err != nil {
+		if !apierrors.IsForbidden(err) {
+			return "", fmt.Errorf("list namespaces: %w", err)
+		}
+
+		return promptNamespace(in, out)
+	}
+
+	namespaces := make([]string, 0, len(namespaceList.Items))
+	normalizedPattern := strings.ToLower(pattern)
+
+	for _, item := range namespaceList.Items {
+		if pattern == "" ||
+			strings.Contains(
+				strings.ToLower(item.Name),
+				normalizedPattern,
+			) {
+			namespaces = append(namespaces, item.Name)
+		}
+	}
+
+	if len(namespaces) == 0 {
+		if pattern != "" {
+			return "", fmt.Errorf(
+				"no namespaces matching %q found",
+				pattern,
+			)
+		}
+
+		return "", fmt.Errorf("no namespaces found")
+	}
+
+	sort.Strings(namespaces)
+
+	return ui.SelectNamespace(namespaces)
 }
 
 func promptNamespace(in io.Reader, out io.Writer) (string, error) {
